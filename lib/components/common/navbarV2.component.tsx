@@ -45,7 +45,7 @@ import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
 import { useUserDataStore } from "@/lib/store/useUserDataStore";
 import { ObtenerSesion } from "@/lib/actions/cookie.action";
-import { LinksGroup } from "./linkGroup.component";
+// import { LinksGroup } from "./linkGroup.component";
 import { UserButton } from "./userButton.component";
 import { Global } from "@mantine/styles";
 import { useStyles } from "@/lib/hooks/useStyles";
