@@ -4,9 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build & cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/ && cp -r web.config .next/standalone/web.config && echo 'Ready to IIS'",
-    "start": "node server.js",
-    "build:dev": "cross-env NODE_ENV=test next build & cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/ && cp -r web.config .next/standalone/web.config && echo 'Ready to IIS'",
+    "build": "next build",
+    "start": "next start",
     "lint": "next lint",
     "gpush": "cross-env-shell git add . && git commit -m \"update %DATE% %TIME%\" && git push"
   },

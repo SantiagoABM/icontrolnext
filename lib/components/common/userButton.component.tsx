@@ -21,7 +21,7 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { color_Secundario, Entorno } from "@/lib/utils/constantes";
+import { color_Secundario } from "@/lib/utils/constantes";
 import { useCloseSesion } from "@/lib/hooks/useCloseSesion";
 
 interface UserButtonProps {
