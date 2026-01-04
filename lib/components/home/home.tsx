@@ -4,17 +4,22 @@ import { getDetalleReporteByTim } from "@/lib/actions/maestros/detalle.action";
 import { getReportesByMotivo } from "@/lib/actions/maestros/reporte.action";
 import { Detalle, Reporte } from "@/lib/interfaces/maestros/reportes.interface";
 import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
+import ExcelJS from "exceljs";
 
 import {
   Card,
   Grid,
-  Group,
   Select,
   Text,
   Divider,
+  NumberInput,
+  Flex,
+  Table,
+  Tabs,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useMediaQuery } from "@mantine/hooks";
 
 import {
   Chart as ChartJS,
@@ -24,10 +29,17 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  ChartData,
+  ChartOptions,
 } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
+import { IconBox, IconFile, IconFileExport, IconPackageOff, IconTrendingUp } from "@tabler/icons-react";
+import { CATEGORIAS_MACRO, color_Primario, color_primary_darkMode, color_secondary_darkMode, color_SecundarioDark, SUBDEPARTAMENTOS } from "@/lib/utils/constantes";
+import { color_PrimarioDark } from './../../utils/constantes';
+import { saveAs } from "file-saver";
+import { useLoadingStore } from "@/lib/store/useLoadingStore";
+import { formatDate } from "@/lib/hooks/helpers";
 
-// Registrar elementos Chart.js
 ChartJS.register(
   ArcElement,
   Tooltip,
@@ -39,22 +51,47 @@ ChartJS.register(
 
 export default function HomeComponent() {
   const { setData } = useTitlePageStore();
+  const isMobile = useMediaQuery("(max-width: 900px)");
+  const { show, hide } = useLoadingStore();
+
+
+  //exportarExcelTIM
+  const [selectedTim, setSelectedTim] = useState<Reporte | null>(null);
+  const [limiteCriticos, setLimiteCrit] = useState<number>(10);
+  const [montoMenor, setMontoMenor] = useState<number>(0);
+
+  const [reportes, setReportes] = useState<Reporte[]>([]);
+  const [detalles, setDetalles] = useState<Detalle[]>([]);
+  const [tipoMercaderia, setTipoMercaderia] =
+    useState<"MS" | "CT" | null>(null);
+
+  const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
+  const [subDptos, setSubDptos] = useState<string[]>([]);
+  const [subDepartamentosFiltrados, setSubDepartamentosFiltrados] = useState<string[]>([]);
+  const [subDepartamentosMSFiltrados, setSubDepartamentosMSFiltrados] = useState<string[]>([]);
+  const [subDptosMS, setSubDptosMS] = useState<string[]>([]);
+
+  const [selectedSubDpto, setSelectedSubDpto] = useState<string | null>(null);
+
+  /* ===================== CARGA INICIAL ===================== */
+
 
   useEffect(() => {
     setData({
       titulo: "Dashboard",
-      subtitle: "Qué hacemos hoy?",
+      buttons: [
+        {
+          Texto: "Exportar excel",
+          icon: IconFileExport,
+          action: () => exportarExcelTIM(),
+        },
+      ]
     });
-  }, []);
+  }, [selectedTim, detalles.length > 0]);
 
-  const [selectedTim, setSelectedTim] = useState<Reporte | null>(null);
-  const [reportes, setReportes] = useState<Reporte[]>([]);
-  const [detalles, setDetalles] = useState<Detalle[]>([]);
-
-  /* ============================================
-          CARGAR REPORTES TIM
-  ============================================ */
   const fetchReportes = async () => {
+    show();
+
     const response = await getReportesByMotivo("T");
     if (!response.success) {
       notifications.show({
@@ -64,13 +101,17 @@ export default function HomeComponent() {
       return;
     }
     setReportes(response.datos);
+    hide();
+
   };
 
-  /* ============================================
-        CARGAR DETALLES DEL TIM
-  ============================================ */
   const fetchDetalle = async () => {
-    const response = await getDetalleReporteByTim(selectedTim!.tim!);
+
+    if (!selectedTim?.tim) return;
+    show();
+
+    const response = await getDetalleReporteByTim(selectedTim.tim);
+
     if (!response.success) {
       notifications.show({
         title: "ERROR",
@@ -78,7 +119,16 @@ export default function HomeComponent() {
       });
       return;
     }
+
     setDetalles(response.datos);
+
+    procesarSubDptos(response.datos);
+    procesarSubDptosMS(response.datos);
+
+    setSelectedDepartamento(null);
+    setSelectedSubDpto(null);
+    hide();
+
   };
 
   useEffect(() => {
@@ -89,209 +139,820 @@ export default function HomeComponent() {
     if (selectedTim) fetchDetalle();
   }, [selectedTim]);
 
-  /* ============================================
-          MÉTRICAS
-  ============================================ */
+  /* ===================== PROCESAR SUBDPTOS ===================== */
 
-  const totalEnviadas = detalles.reduce((s, d) => s + d.uEnviadas, 0);
-  const totalRecibidas = detalles.reduce((s, d) => s + d.uRecibidas, 0);
-  const faltantes = totalEnviadas - totalRecibidas;
-  const avance = totalEnviadas > 0 ? (totalRecibidas / totalEnviadas) * 100 : 0;
+  const procesarSubDptos = (data: Detalle[]) => {
+    const lista = Array.from(
+      new Set(
+        data
+          .map((d) => (d.subdpto ?? "").trim().toUpperCase())
+          .filter((s) => s !== "" && s !== "NULL")
+      )
+    );
+    setSubDptos(lista);
+  };
 
-  const conformes = detalles.filter((d) => d.uRecibidas === d.uEnviadas).length;
-  const productosFaltantes = detalles.length - conformes;
+  const procesarSubDptosMS = (data: Detalle[]) => {
+    const lista = Array.from(
+      new Set(
+        data
+          .filter((d) => d.marcaSensible === true)
+          .map((d) => d.subdpto)
+          .filter(
+            (s): s is string =>
+              typeof s === "string" && s.trim() !== ""
+          )
+      )
+    );
+    setSubDptosMS(lista);
+  };
+
+  /*Funcion exportar excel*/
+  const exportarExcelTIM = async () => {
+    console.log(selectedTim);
+    if (!selectedTim?.tim) {
+      notifications.show({
+        title: "Atención",
+        message: "Debe seleccionar un TIM antes de exportar",
+        color: "yellow",
+      });
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+
+    /* ===============================
+       HOJA 1 — RESUMEN TIM (MS)
+    =============================== */
+    const sheetResumen = workbook.addWorksheet("Resumen TIM");
+
+    sheetResumen.addRows([
+      ["TIM", selectedTim.tim],
+      ["Origen", selectedTim.origen],
+      ["Fecha Envío", formatDate(selectedTim.fechaEnvio)],
+      [],
+      ["Total Productos", totalDetalles],
+      ["Faltantes", totalFaltantes],
+      ["Sobrantes", totalSobrantes],
+      ["Monto Faltante", montoTotalFaltante],
+      ["Monto Sobrante", montoTotalSobrantes],
+      ["Avance (%)", Number(avance.toFixed(2))],
+      [],
+      ["FALTANTES - SENSIBLE CENTRAL"],
+      ["Subdepartamento", "Cantidad"],
+    ]);
+
+    // 👉 Faltantes Mercadería Sensible
+    const faltantesMS: Record<string, number> = {};
+
+    detallesFiltrados
+      .filter(d => d.marcaSensible && d.uRecibidas < d.uEnviadas)
+      .forEach(d => {
+        const key = d.subdpto ?? "SIN_SUBDPTO";
+        faltantesMS[key] = (faltantesMS[key] || 0) + 1;
+      });
+
+    Object.entries(faltantesMS).forEach(([code, value]) => {
+      const desc =
+        SUBDEPARTAMENTOS.find(s => s.codigo === code)?.descripcion ?? "";
+      sheetResumen.addRow([`${code} - ${desc}`, value]);
+    });
+
+    sheetResumen.columns.forEach(col => (col.width = 30));
+
+    /* ===============================
+       HOJA 2 — FALTANTES
+    =============================== */
+    const sheetFaltantes = workbook.addWorksheet("Faltantes");
+
+    sheetFaltantes.columns = [
+      { header: "Subdepartamento", key: "subdpto", width: 20 },
+      { header: "Descripción", key: "descripcion", width: 40 },
+      { header: "Enviadas", key: "uEnviadas", width: 12 },
+      { header: "Recibidas", key: "uRecibidas", width: 12 },
+      { header: "Faltantes", key: "faltantes", width: 12 },
+      { header: "Costo Unit.", key: "costo", width: 14 },
+      { header: "Monto", key: "monto", width: 14 },
+      { header: "Sensible Central", key: "ms", width: 14 },
+    ];
+
+    faltantes.forEach(d => {
+      const unidades = d.uEnviadas - d.uRecibidas;
+      sheetFaltantes.addRow({
+        subdpto: d.subdpto,
+        descripcion: d.descripcion,
+        uEnviadas: d.uEnviadas,
+        uRecibidas: d.uRecibidas,
+        faltantes: unidades,
+        costo: d.costoPromedio ?? 0,
+        monto: unidades * (d.costoPromedio ?? 0),
+        ms: d.marcaSensible ? "SI" : "NO",
+      });
+    });
+
+    /* ===============================
+       HOJA 3 — SOBRANTES
+    =============================== */
+    const sheetSobrantes = workbook.addWorksheet("Sobrantes");
+
+    sheetSobrantes.columns = [
+      { header: "Subdepartamento", key: "subdpto", width: 20 },
+      { header: "Descripción", key: "descripcion", width: 40 },
+      { header: "Enviadas", key: "uEnviadas", width: 12 },
+      { header: "Recibidas", key: "uRecibidas", width: 12 },
+      { header: "Sobrantes", key: "sobrantes", width: 12 },
+      { header: "Costo Unit.", key: "costo", width: 14 },
+      { header: "Monto", key: "monto", width: 14 },
+      { header: "Sensible Central", key: "ms", width: 14 },
+    ];
+
+    sobrantes.forEach(d => {
+      const unidades = d.uRecibidas - d.uEnviadas;
+      sheetSobrantes.addRow({
+        subdpto: d.subdpto,
+        descripcion: d.descripcion,
+        uEnviadas: d.uEnviadas,
+        uRecibidas: d.uRecibidas,
+        sobrantes: unidades,
+        costo: d.costoPromedio ?? 0,
+        monto: unidades * (d.costoPromedio ?? 0),
+        ms: d.marcaSensible ? "SI" : "NO",
+      });
+    });
+
+    /* ===============================
+       DESCARGA
+    =============================== */
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    saveAs(
+      new Blob([buffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      `TIM_${selectedTim.tim}_resultado.xlsx`
+    );
+  };
+
+
+
+  /* ============ FILTRAR SUBDPTOS POR DEPARTAMENTO ============ */
+
+  useEffect(() => {
+    if (!selectedDepartamento) {
+      setSubDepartamentosFiltrados(
+        subDptos.filter((x): x is string => typeof x === "string")
+      );
+      setSubDepartamentosMSFiltrados(
+        subDptosMS.filter((x): x is string => typeof x === "string")
+      );
+      return;
+    }
+
+    const filtrados = subDptos.filter((s) =>
+      s.startsWith(selectedDepartamento)
+    );
+    const filtradosMS = subDptosMS.filter((s) =>
+      s.startsWith(selectedDepartamento)
+    );
+
+    setSubDepartamentosFiltrados(
+      filtrados.filter((x): x is string => typeof x === "string")
+    );
+    setSubDepartamentosMSFiltrados(
+      filtradosMS.filter((x): x is string => typeof x === "string")
+    );
+  }, [selectedDepartamento, subDptos, subDptosMS]);
+
+  /* ===================== FILTRO GLOBAL ===================== */
+
+  const detallesFiltrados = useMemo(() => {
+    let data = [...detalles];
+
+    if (selectedDepartamento) {
+      data = data.filter(d =>
+        d.subdpto?.startsWith(selectedDepartamento)
+      );
+    }
+
+    if (selectedSubDpto) {
+      data = data.filter(d => d.subdpto === selectedSubDpto);
+    }
+
+    if (tipoMercaderia === "MS") {
+      data = data.filter(d => d.marcaSensible === true);
+    }
+
+    if (tipoMercaderia === "CT") {
+      data = data.filter(d => d.isContable === true);
+    }
+
+    return data;
+  }, [
+    detalles,
+    selectedDepartamento,
+    selectedSubDpto,
+    tipoMercaderia,
+  ]);
+
+
+  /* ===================== MÉTRICAS ===================== */
+
+  const totalDetalles = detallesFiltrados.length;
+  const faltantes = detallesFiltrados.filter(
+    (d) => d.uRecibidas < d.uEnviadas
+  );
+  const sobrantes = detallesFiltrados.filter(
+    (d) => d.uRecibidas > d.uEnviadas
+  );
+
+  const totalFaltantes = faltantes.length;
+  const totalSobrantes = sobrantes.length;
+
+  const montoTotalFaltante = faltantes.reduce(
+    (sum, d) =>
+      sum +
+      (d.uEnviadas - d.uRecibidas) * (d.costoPromedio ?? 0),
+    0
+  );
+
+  const montoTotalSobrantes = sobrantes.reduce(
+    (sum, d) =>
+      sum +
+      (d.uRecibidas - d.uEnviadas) * (d.costoPromedio ?? 0),
+    0
+  );
+
+  const totalEnviadas = detallesFiltrados.reduce(
+    (s, d) => s + d.uEnviadas,
+    0
+  );
+  const totalRecibidas = detallesFiltrados.reduce(
+    (s, d) => s + d.uRecibidas,
+    0
+  );
+  const avance =
+    totalEnviadas > 0
+      ? (totalRecibidas / totalEnviadas) * 100
+      : 0;
+
+  const conformes = detallesFiltrados.filter(
+    (d) => d.uRecibidas === d.uEnviadas
+  ).length;
+
+  /* ===================== CRÍTICOS / SOBRANTES ===================== */
+
+  const criticosBase = faltantes.filter(
+    (d) => (d.costoPromedio ?? 0) >= montoMenor
+  );
+
+  const criticos = criticosBase
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.costoPromedio ?? 0) - (a.costoPromedio ?? 0)
+    )
+    .slice(0, limiteCriticos);
+
+  const sobrantesOrdenados = sobrantes
+    .slice()
+    .sort((a, b) => {
+      const montoA =
+        (a.uRecibidas - a.uEnviadas) * (a.costoPromedio ?? 0);
+      const montoB =
+        (b.uRecibidas - b.uEnviadas) * (b.costoPromedio ?? 0);
+      return montoB - montoA;
+    })
+    .slice(0, limiteCriticos);
+
+  /* ===================== CHARTS ===================== */
 
   const donaData = {
-    labels: ["Conformes", "Faltantes"],
+    labels: ["Conformes", "Faltantes", "Sobrantes"],
     datasets: [
       {
-        data: [conformes, productosFaltantes],
-        backgroundColor: ["#4caf50", "#f44336"],
+        data: [conformes, totalFaltantes, totalSobrantes],
+        backgroundColor: ["#4caf50", "#f44336", "#2196f3"],
       },
     ],
   };
 
-  /* ============================================
-      FALTANTES POR CATEGORÍA (gráfico barras)
-  ============================================ */
   const faltantesPorCat: Record<string, number> = {};
-
-  detalles.forEach((d) => {
+  detallesFiltrados.forEach((d) => {
     if (d.uRecibidas < d.uEnviadas) {
-      const key = d.subdpto || "SIN_SUBDPTO";
+      const key = d.subdpto ?? "SIN";
       faltantesPorCat[key] = (faltantesPorCat[key] || 0) + 1;
     }
   });
 
-  const barData = {
-    labels: Object.keys(faltantesPorCat),
+  const MAX_CATS = 15;
+  const sortedCats = Object.entries(faltantesPorCat).sort(
+    (a, b) => b[1] - a[1]
+  );
+  let topCats = sortedCats.slice(0, MAX_CATS);
+
+  if (sortedCats.length > MAX_CATS) {
+    const restantes = sortedCats.slice(MAX_CATS);
+    const totalOtros = restantes.reduce(
+      (sum, [, value]) => sum + value,
+      0
+    );
+    topCats = [...topCats, ["OTROS", totalOtros]];
+  }
+
+  const barLabels = topCats.map(([code]) => {
+    if (code === "OTROS") return "OTROS";
+    const desc = SUBDEPARTAMENTOS.find(
+      (s) => s.codigo === code
+    )?.descripcion;
+    return `${code} - ${desc ?? ""}`;
+  });
+
+  const barValues = topCats.map(([, value]) => value);
+
+  const barData: ChartData<"bar", number[], string> = {
+    labels: barLabels,
     datasets: [
       {
         label: "Faltantes",
-        data: Object.values(faltantesPorCat),
+        data: barValues,
         backgroundColor: "#ff9800",
       },
     ],
   };
 
-  const barOptions = {
-    indexAxis: "y" as const,
+  const barOptions: ChartOptions<"bar"> = {
+    indexAxis: "y",
     plugins: { legend: { display: false } },
     maintainAspectRatio: false,
+    responsive: true,
   };
 
-  /* ============================================
-        TOP 10 CRÍTICOS
-  ============================================ */
-  const criticos = detalles
-    .filter((d) => d.uRecibidas < d.uEnviadas && d.costoPromedio > 50)
-    .sort((a, b) => b.costoPromedio - a.costoPromedio)
-    .slice(0, 10);
+  /* Título dinámico del gráfico de barras */
+  let barTitle = "Faltantes por categoría (Todos los departamentos)";
 
+  if (selectedSubDpto) {
+    const sub = SUBDEPARTAMENTOS.find(
+      (s) => s.codigo === selectedSubDpto
+    );
+    barTitle = `Faltantes - Subdepartamento ${selectedSubDpto}${sub ? ` — ${sub.descripcion}` : ""
+      }`;
+  } else if (selectedDepartamento) {
+    const dept = CATEGORIAS_MACRO.find(
+      (c) => c.prefix === selectedDepartamento
+    );
+    barTitle = `Faltantes por categoría — Departamento ${selectedDepartamento}${dept ? ` (${dept.label})` : ""
+      }`;
+  } else if (tipoMercaderia === "MS") {
+    barTitle = "Faltantes — Sensible Central";
+  } else if (tipoMercaderia === "CT") {
+    barTitle = "Faltantes — Sensible Tienda";
+  }
+
+
+  /* ===================== HELPERS ===================== */
+
+  
+
+  const handleLimpiarFiltros = () => {
+    setSelectedDepartamento(null);
+    setSelectedSubDpto(null);
+    setTipoMercaderia(null);
+  };
+
+  /* ===================== SECCIONES RENDER ===================== */
+
+  const renderResumen = () =>
+    detallesFiltrados.length > 0 ? (
+      <Grid mt="xl" gutter="lg">
+        <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+          <Card shadow="lg" p="lg" bg={color_PrimarioDark}>
+            <Text size="sm" fw={500}>
+              Total de Productos
+            </Text>
+            <Text size="xl" fw={900}>
+              <IconBox /> {totalDetalles}
+            </Text>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+          <Card shadow="lg" p="lg" bg="red">
+            <Text size="sm" fw={500}>
+              Productos Faltantes
+            </Text>
+            <Text size="xl" fw={900}>
+              <IconPackageOff /> {totalFaltantes}
+            </Text>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+          <Card shadow="lg" p="lg" bg="blue">
+            <Text size="sm" fw={500}>
+              Productos Sobrantes
+            </Text>
+            <Text size="xl" fw={900}>
+              <IconPackageOff /> {totalSobrantes}
+            </Text>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+          <Card shadow="lg" p="lg" bg="red">
+            <Text size="sm" fw={500}>
+              Monto Total Faltante
+            </Text>
+            <Text size="xl" fw={900}>
+              S/ {montoTotalFaltante.toFixed(2)}
+            </Text>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+          <Card shadow="lg" p="lg" bg="blue">
+            <Text size="sm" fw={500}>
+              Monto Total Sobrante
+            </Text>
+            <Text size="xl" fw={900}>
+              S/ {montoTotalSobrantes.toFixed(2)}
+            </Text>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+          <Card shadow="lg" p="lg" bg={color_SecundarioDark}>
+            <Text size="sm" fw={600}>
+              % Avance
+            </Text>
+            <Text size="xl" fw={900}>
+              <IconTrendingUp /> {avance.toFixed(1)}%
+            </Text>
+          </Card>
+        </Grid.Col>
+      </Grid>
+    ) : (
+      <Text mt="xl" c="dimmed">
+        Selecciona un TIM y filtros para ver el resumen.
+      </Text>
+    );
+
+  const renderGraficos = () =>
+    detallesFiltrados.length > 0 ? (
+      <Grid mt="xl" gutter="lg">
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Card shadow="md" p="lg" style={{ height: 320 }}>
+            <Text ta="center" fw="bold" mb="xs">
+              Conformes / Faltantes / Sobrantes
+            </Text>
+            <div style={{ height: 260 }}>
+              <Doughnut
+                data={donaData}
+                options={{ maintainAspectRatio: false }}
+              />
+            </div>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Card shadow="md" p="lg" style={{ height: 320 }}>
+            <Text ta="center" fw="bold" mb="xs">
+              {barTitle}
+            </Text>
+            <div style={{ height: 260 }}>
+              <Bar data={barData} options={barOptions} />
+            </div>
+          </Card>
+        </Grid.Col>
+      </Grid>
+    ) : (
+      <Text mt="xl" c="dimmed">
+        No hay datos para mostrar gráficos.
+      </Text>
+    );
+
+  const CriticosCard = () => (
+    <Card mt="xl" p="lg" shadow="md">
+      <Text fw="bold" size="xl">
+        Top {Math.min(limiteCriticos, criticosBase.length)} de {criticosBase.length} Faltantes Críticos (≥ S/{montoMenor})
+      </Text>
+      <Divider my="sm" />
+
+      {criticos.length === 0 && (
+        <Text c="dimmed" my="md">
+          No hay productos críticos.
+        </Text>
+      )}
+
+      {criticos.length > 0 && (
+        <Table
+          striped
+          highlightOnHover
+          withTableBorder
+          withColumnBorders
+          mt="md"
+          styles={{
+            table: { borderRadius: 12, overflow: "hidden" },
+          }}
+        >
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Descripción</Table.Th>
+              <Table.Th>Faltantes</Table.Th>
+              <Table.Th>Costo Unit.</Table.Th>
+              <Table.Th>Monto Total</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+
+          <Table.Tbody>
+            {criticos.map((d, i) => {
+              const unidadesFaltantes = d.uEnviadas - d.uRecibidas;
+              const total =
+                unidadesFaltantes * (d.costoPromedio ?? 0);
+
+              return (
+                <Table.Tr key={i}>
+                  <Table.Td>{d.descripcion}</Table.Td>
+                  <Table.Td
+                    style={{ color: "red", fontWeight: 700 }}
+                  >
+                    {unidadesFaltantes}
+                  </Table.Td>
+                  <Table.Td>
+                    S/ {d.costoPromedio?.toFixed(2)}
+                  </Table.Td>
+                  <Table.Td
+                    style={{ color: "#d32f2f", fontWeight: 800 }}
+                  >
+                    S/ {total.toFixed(2)}
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      )}
+    </Card>
+  );
+
+  const SobrantesCard = () => (
+    <Card mt="xl" p="lg" shadow="md">
+      <Text fw="bold" size="xl">
+        {Math.min(limiteCriticos, sobrantes.length)} Productos Sobrantes
+      </Text>
+
+      <Divider my="sm" />
+
+      {sobrantesOrdenados.length === 0 && (
+        <Text c="dimmed">No hay sobrantes.</Text>
+      )}
+
+      {sobrantesOrdenados.length > 0 && (
+        <Table
+          striped
+          highlightOnHover
+          withTableBorder
+          withColumnBorders
+          mt="md"
+          styles={{
+            table: { borderRadius: 12, overflow: "hidden" },
+          }}
+        >
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Descripción</Table.Th>
+              <Table.Th>Sobrantes</Table.Th>
+              <Table.Th>Costo Unit.</Table.Th>
+              <Table.Th>Monto Total</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+
+          <Table.Tbody>
+            {sobrantesOrdenados.map((d, i) => {
+              const unidadesSobrantes =
+                d.uRecibidas - d.uEnviadas;
+              const monto =
+                unidadesSobrantes * (d.costoPromedio ?? 0);
+
+              return (
+                <Table.Tr key={i}>
+                  <Table.Td>{d.descripcion}</Table.Td>
+                  <Table.Td
+                    style={{ color: "red", fontWeight: 700 }}
+                  >
+                    {unidadesSobrantes}
+                  </Table.Td>
+                  <Table.Td>
+                    S/ {d.costoPromedio?.toFixed(2)}
+                  </Table.Td>
+                  <Table.Td
+                    style={{ color: "#322FD3FF", fontWeight: 800 }}
+                  >
+                    S/ {monto.toFixed(2)}
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      )}
+    </Card>
+  );
+
+  const renderTablas = () => {
+    if (detallesFiltrados.length === 0) {
+      return (
+        <Text mt="xl" c="dimmed">
+          No hay datos para mostrar tablas.
+        </Text>
+      );
+    }
+
+    return (
+      <>
+        <Grid mt="lg" gutter="md">
+          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <NumberInput
+              label="Monto mínimo crítico"
+              min={0}
+              value={montoMenor}
+              onChange={(value) =>
+                setMontoMenor(Number(value) || 0)
+              }
+            />
+          </Grid.Col>
+
+          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <NumberInput
+              label="Cantidad a mostrar (Top N)"
+              min={1}
+              max={Math.max(
+                criticosBase.length,
+                sobrantes.length,
+                1
+              )}
+              value={limiteCriticos}
+              onChange={(value) =>
+                setLimiteCrit(Number(value) || 1)
+              }
+            />
+          </Grid.Col>
+        </Grid>
+
+        {isMobile ? (
+          <Tabs defaultValue="criticos" mt="md">
+            <Tabs.List>
+              <Tabs.Tab value="criticos">Críticos</Tabs.Tab>
+              <Tabs.Tab value="sobrantes">Sobrantes</Tabs.Tab>
+            </Tabs.List>
+
+            <Tabs.Panel value="criticos">
+              <CriticosCard />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="sobrantes">
+              <SobrantesCard />
+            </Tabs.Panel>
+          </Tabs>
+        ) : (
+          <Grid mt="lg" gutter="lg">
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <CriticosCard />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <SobrantesCard />
+            </Grid.Col>
+          </Grid>
+        )}
+      </>
+    );
+  };
+
+  /* ===================== RENDER PRINCIPAL ===================== */
   return (
     <div>
-      {/* =====================
-          SELECTOR DE TIM
-        ====================== */}
-      <Select
-        label="Seleccione TIM"
-        placeholder="Seleccione un TIM..."
-        data={reportes.map((r) => ({
-          label: `${r.tim} - ${r.origen} - ${r.fechaEnvio}`,
-          value: String(r.tim),
-        }))}
-        onChange={(value) => {
-          const report = reportes.find((r) => String(r.tim) === value);
-          setSelectedTim(report ?? null);
-        }}
-      />
+      {/* FILTROS SUPERIORES */}
+      <Flex gap="md" align="flex-end" wrap="wrap">
+        <Select
+          label="Seleccione TIM"
+          placeholder="Seleccione un TIM..."
+          style={{ width: 260 }}
+          data={reportes.map((r) => ({
+            value: String(r.tim),
+            label: `${r.tim} - ${r.origen} - ${formatDate(
+              r.fechaEnvio
+            )}`,
+          }))}
+          onChange={(value) => {
+            const r = reportes.find(
+              (x) => String(x.tim) === value
+            );
+            setSelectedTim(r ?? null);
+          }}
+        />
 
-      {/* =====================
-          TARJETAS PREMIUM
-        ====================== */}
-      {detalles.length > 0 && (
-        <Grid mt="xl" gutter="lg">
-          
-          {/* ENVIADAS */}
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card
-              shadow="lg"
-              p="lg"
-              style={{
-                background: "linear-gradient(135deg, #4caf50, #66bb6a)",
-                color: "white",
-                borderRadius: 16,
-              }}
-            >
-              <Text size="sm" fw={500}>Total Unidades Enviadas</Text>
-              <Text size="xl" fw={900}>{totalEnviadas}</Text>
-            </Card>
-          </Grid.Col>
-
-          {/* CONTADAS */}
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card
-              shadow="lg"
-              p="lg"
-              style={{
-                background: "linear-gradient(135deg, #2196f3, #42a5f5)",
-                color: "white",
-                borderRadius: 16,
-              }}
-            >
-              <Text size="sm" fw={500}>Total Unidades Contadas</Text>
-              <Text size="xl" fw={900}>{totalRecibidas}</Text>
-            </Card>
-          </Grid.Col>
-
-          {/* FALTANTES */}
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card
-              shadow="lg"
-              p="lg"
-              style={{
-                background: "linear-gradient(135deg, #e53935, #ef5350)",
-                color: "white",
-                borderRadius: 16,
-              }}
-            >
-              <Text size="sm" fw={500}>Unidades Faltantes</Text>
-              <Text size="xl" fw={900}>{faltantes}</Text>
-            </Card>
-          </Grid.Col>
-
-          {/* AVANCE */}
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <Card
-              shadow="lg"
-              p="lg"
-              style={{
-                background: "linear-gradient(135deg, #ffb300, #ffca28)",
-                color: "black",
-                borderRadius: 16,
-              }}
-            >
-              <Text size="sm" fw={600}>% Avance</Text>
-              <Text size="xl" fw={900}>{avance.toFixed(1)}%</Text>
-            </Card>
-          </Grid.Col>
-
-        </Grid>
-      )}
-
-      {/* =====================
-          DONUT + BARRAS
-        ====================== */}
-      {detalles.length > 0 && (
-        <Grid mt="xl" gutter="lg">
-          
-          {/* DONUT */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card shadow="md" p="lg" style={{ height: 320 }}>
-              <Text fw="bold" mb="xs">Unidades Conformes vs Unidades Faltantes</Text>
-              <div style={{ height: "250px" }}>
-                <Doughnut data={donaData} options={{ maintainAspectRatio: false }} />
-              </div>
-            </Card>
-          </Grid.Col>
-
-          {/* BARRAS */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card shadow="md" p="lg" style={{ height: 320 }}>
-              <Text fw="bold" mb="xs">Unidades Faltantes por categoría</Text>
-              <div style={{ height: "250px" }}>
-                <Bar data={barData} options={barOptions} />
-              </div>
-            </Card>
-          </Grid.Col>
-
-        </Grid>
-      )}
-
-      {/* =====================
-          TOP 10 CRÍTICOS
-        ====================== */}
-      {detalles.length > 0 && (
-        <Card mt="xl" p="lg" shadow="md">
-          <Text fw="bold" size="xl">Top 10 Unidades Faltantes Críticos (Mayores a S/50)</Text>
-          <Divider my="sm" />
-
-          {criticos.length === 0 && (
-            <Text c="dimmed">No hay productos críticos.</Text>
+        <Select
+          label="Departamento"
+          disabled={!selectedTim}
+          placeholder="Seleccione un departamento..."
+          style={{ width: 260 }}
+          data={Array.from(new Set(subDptos.map((s) => s.substring(0, 3)))).map(
+            (prefix) => {
+              const item = CATEGORIAS_MACRO.find((c) => prefix === c.prefix);
+              return {
+                value: prefix,
+                label: `${prefix} - ${item?.label ?? "Sin categoría"}`,
+              };
+            }
           )}
+          searchable
+          clearable
+          value={selectedDepartamento}
+          onChange={(v) => {
+            setSelectedDepartamento(v);
+            setSelectedSubDpto(null); // limpiar subdpto
+          }}
+        />
 
-          {criticos.map((d, i) => (
-            <Group
-              key={i}
-              justify="space-between"
-              py={4}
-              style={{ borderBottom: "1px solid #eee" }}
-            >
-              <Text>{d.descripcion}</Text>
-              <Text c="red" fw="bold">S/ {d.costoPromedio}</Text>
-            </Group>
-          ))}
-        </Card>
+
+        <Select
+          label="Subdepartamento"
+          disabled={!selectedDepartamento}
+          placeholder="Seleccione subdepartamento..."
+          style={{ width: 290 }}
+          data={subDepartamentosFiltrados.map((s) => ({
+            value: s,
+            label: `${s} - ${SUBDEPARTAMENTOS.find((d) => d.codigo === s)?.descripcion ?? ""
+              }`,
+          }))}
+          value={selectedSubDpto}
+          searchable
+          clearable
+          onChange={(v) => {
+            setSelectedSubDpto(v);
+          }}
+        />
+        <Select
+          label="Tipo de Mercadería"
+          disabled={detalles.length === 0}
+          placeholder="Todas"
+          style={{ width: 290 }}
+          data={[
+            { value: "MS", label: "Sensible Central" },
+            { value: "CT", label: "Sensible Tienda" },
+          ]}
+          value={tipoMercaderia}
+          clearable
+          onChange={(v) =>
+            setTipoMercaderia(v as "MS" | "CT" | null)
+          }
+        />
+
+
+
+        <button
+          onClick={handleLimpiarFiltros}
+          style={{
+            padding: "8px 16px",
+            background: "#0CC20CFF",
+            color: "white",
+            borderRadius: 8,
+            border: "none",
+            cursor: "pointer",
+            height: 40,
+          }}
+        >
+          Limpiar
+        </button>
+      </Flex>
+
+      {/* CONTENIDO SEGÚN TAMAÑO DE PANTALLA */}
+      {isMobile ? (
+        <Tabs defaultValue="resumen" mt="lg">
+          <Tabs.List>
+            <Tabs.Tab value="resumen">Resumen</Tabs.Tab>
+            <Tabs.Tab value="graficos">Gráficos</Tabs.Tab>
+            <Tabs.Tab value="tablas">Tablas</Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="resumen">
+            {renderResumen()}
+          </Tabs.Panel>
+
+          <Tabs.Panel value="graficos">
+            {renderGraficos()}
+          </Tabs.Panel>
+
+          <Tabs.Panel value="tablas">
+            {renderTablas()}
+          </Tabs.Panel>
+        </Tabs>
+      ) : (
+        <>
+          {renderResumen()}
+          {renderGraficos()}
+          {renderTablas()}
+        </>
       )}
     </div>
   );

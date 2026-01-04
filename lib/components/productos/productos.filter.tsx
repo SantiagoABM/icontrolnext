@@ -57,7 +57,7 @@ export default function ProductosFilter({
     const [subdpto, setSubdpto] = useState<string | null>(null);
     //   const [fechaIni, setFechaIni] = useState<string | null>(fechaFormateada);
     //   const [fechaFin, setFechaFin] = useState<string | null>(fechaFormateada);
-    const [precio, setPrecio] = useState<number | null>(null);
+    const [costoPromedio, setcostoPromedio] = useState<number | null>(null);
     const [casePack, setCasePack] = useState<number | null>(null);
     const [descripcion, setDescripcion] = useState<string | null>(null);
     const [marca, setMarca] = useState<string | null>(null);
@@ -180,18 +180,29 @@ export default function ProductosFilter({
                             <NumberInput
                                 label="CasePack"
                                 placeholder="Digita el CasePack"
-                                onChange={(e) => setCasePack(e == undefined ? null : Number(e))}
-                                value={casePack ?? ""}
                                 hideControls
+                                value={casePack ?? ""}
+                                onChange={(v) => {
+                                    setCasePack(v === "" ? null : Number(v));
+                                }}
                             />
-
                             <NumberInput
                                 label="Costo Promedio"
-                                placeholder="Digita el Precio"
-                                onChange={(e) => setPrecio(e == undefined ? null : Number(e))}
-                                value={precio ?? ""}
+                                placeholder="Digita costo promedio"
                                 hideControls
+                                value={costoPromedio ?? ""}
+                                onChange={(value) => {
+                                    if (value === undefined || value === null || value === "") {
+                                        setcostoPromedio(null);
+                                    } else {
+                                        setcostoPromedio(Number(value));
+                                    }
+                                }}
                             />
+
+
+
+
                         </SimpleGrid>
                         {/* BOTONES EN UNA FILA CON RESPONSIVE */}
                         <Flex
@@ -209,8 +220,8 @@ export default function ProductosFilter({
                                         ean: ean || null,
                                         sku: sku || null,
                                         subdpto: subdpto || null,
-                                        precio: precio || null,
-                                        casePack: casePack || null,
+                                        costoPromedio: costoPromedio != null && costoPromedio >= 0 ? costoPromedio : null,
+                                        casePack: casePack,
                                         descripcion: descripcion || null,
                                         marca: marca || null,
                                         proveedor: proveedor || null
@@ -220,8 +231,8 @@ export default function ProductosFilter({
                                         ean: ean || "",
                                         sku: sku || "",
                                         subdpto: subdpto || "",
-                                        precio: precio || null,
-                                        casePack: casePack || null,
+                                        costoPromedio: costoPromedio != null && costoPromedio >= 0 ? costoPromedio : null,
+                                        casePack: casePack,
                                         descripcion: descripcion || "",
                                         marca: marca || "",
                                         proveedor: proveedor || ""
@@ -241,7 +252,7 @@ export default function ProductosFilter({
                                     setMarca(null);
                                     setProveedor(null);
                                     setSubdpto(null);
-                                    setPrecio(null);
+                                    setcostoPromedio(null);
                                     setCasePack(null);
                                 }}
                             >

@@ -42,6 +42,7 @@ const ProductoForm: React.FC<ProductoFormProps> = ({
         proveedor: initialData?.proveedor || "",
         marcaSensible: initialData?.marcaSensible || false,
         uMedida: initialData?.uMedida || "UN",
+        isContable: initialData?.isContable || false,
         subdpto: initialData?.subdpto || "",
         updatedAt: initialData?.updatedAt || null,
     });
@@ -61,6 +62,7 @@ const ProductoForm: React.FC<ProductoFormProps> = ({
         fetchFiltros();
     }, []);
     useEffect(() => {
+        console.log(initialData)
         setFormData(getInitialValues());
     }, [initialData]);
 
@@ -81,6 +83,7 @@ const ProductoForm: React.FC<ProductoFormProps> = ({
     );
 
     const handleSubmit = async () => {
+        console.log(formData)
         await onSave(formData);
     };
 
@@ -201,12 +204,27 @@ const ProductoForm: React.FC<ProductoFormProps> = ({
                     />
                 </SimpleGrid>
                 <Divider></Divider>
-                <Switch
-                    label="Marca Sensible"
-                    checked={formData.marcaSensible ?? false}
-                    onChange={(e) => handleChange("marcaSensible", e.currentTarget.checked)}
-                />
-
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+                    <Switch
+                        label="Marca Sensible"
+                        checked={formData.marcaSensible ?? false}
+                        onChange={(e) => {
+                            handleChange("marcaSensible", e.currentTarget.checked)
+                            if (e.currentTarget.checked) {
+                                handleChange("isContable", true)
+                            }
+                        }}
+                    />
+                    <Switch
+                        label="Mercadería Contable"
+                        checked={formData.isContable ?? false}
+                        onChange={(e) => {
+                            handleChange("isContable", e.currentTarget.checked)
+                            if (!e.currentTarget.checked) {
+                                handleChange("marcaSensible", false)
+                            }
+                        }}
+                    /></SimpleGrid>
             </Stack>
         </ModalCustomComponent>
     );

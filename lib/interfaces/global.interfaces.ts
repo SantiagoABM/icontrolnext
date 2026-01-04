@@ -66,6 +66,7 @@ export interface MenuItem {
   nombre: string,
   url: string,
   orden: string,
+  rolesPermitidos: string[]
   icono: string,
 }
 export interface MenuItemNormalized {

@@ -15,10 +15,12 @@ export interface UsuarioSesion {
     nombre: string;
     rol: string
     token: string
+    updatePass: boolean
 };
 
 export interface DatosSesion {
     nombre: string;
     rol: string
     token: string
+    updatePass: boolean
 };

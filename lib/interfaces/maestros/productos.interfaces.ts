@@ -11,6 +11,13 @@ export interface Producto {
     precioVigente: number | null
     uMedida: string | null
     marcaSensible: boolean | false
+    isContable: boolean | false
     createdAt: string | null
     updatedAt: string | null
+}
+
+export interface SubdptoFlag {
+  subdpto: string;
+  marcaSensible?: boolean;
+  isContable?: boolean;
 }

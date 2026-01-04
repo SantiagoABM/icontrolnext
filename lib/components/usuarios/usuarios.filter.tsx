@@ -61,9 +61,6 @@ export default function UsuarioFilters({
     handlerFilter: (filtrosCampos: UsuarioFilter) => void;
     SetRespaldoFiltros: Dispatch<SetStateAction<UsuarioFilter | null>>;
 }) {
-    //   const hoy = new Date();
-    //   hoy.setHours(0, 0, 0, 0);
-    //   const fechaFormateada = hoy.toISOString().split("T")[0];
     const [opened, { toggle }] = useDisclosure(false);
     const [dni, setDni] = useState<string | null>(null);
     const [nombre, setNombre] = useState<string | null>(null);
@@ -71,19 +68,6 @@ export default function UsuarioFilters({
     const [estado, setEstado] = useState<string>("true");
     const [rol, setRol] = useState<string | null>(null);
 
-
-    // const fetchFiltros = async () => {
-    //     const [marcas] = await Promise.all([
-    //         getAllRoles()
-    //     ]);
-    //     if (!marcas.datos) {
-    //         notifications.show({ title: "ERROR", message: "No se encontraron algunos datos iniciales" });
-    //     }
-    //     setRoles(marcas.datos || []);
-    // };
-    // useEffect(() => {
-    //     fetchFiltros();
-    // }, []);
     const estadosSelect = mapToSelectOptions(
         Estados,
         (m) => m.value,

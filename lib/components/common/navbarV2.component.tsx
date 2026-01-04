@@ -9,33 +9,19 @@ import {
     Drawer,
     ActionIcon,
     Paper,
-    Typography,
     Text,
     Divider,
     Stack,
-    Accordion,
-    AccordionItem,
-    AccordionControl,
-    AccordionPanel,
     Flex,
-    Badge,
 } from "@mantine/core";
 import {
     IconMenu2,
-    IconApps,
-    IconChartBar,
-    IconTable,
-    IconTool,
-    IconBell,
-    IconHome,
-    IconSearch,
 } from "@tabler/icons-react";
 
 import { randomId, useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import TitlePageComponent from "@/lib/components/common/TitlePage.component";
-import { notifications } from "@mantine/notifications";
 import { menuItemsMock, urlBase } from "@/lib/utils/constantes";
 import {
     MenuItem,
@@ -44,7 +30,6 @@ import {
 import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
 import { useUserDataStore } from "@/lib/store/useUserDataStore";
-import { ObtenerSesion } from "@/lib/actions/cookie.action";
 // import { LinksGroup } from "./linkGroup.component";
 import { UserButton } from "./userButton.component";
 import { Global } from "@mantine/styles";
@@ -216,11 +201,12 @@ export default function NavbarComponent({ children }: NavbarProps) {
                     <Flex
                         key={item.id}
                         align="center"
-                        gap={12}
-                        p={12}
+                        justify={collapsed && !isMobile ? "center" : "flex-start"}
+                        gap={collapsed && !isMobile ? 0 : 12}
+                        p={collapsed && !isMobile ? 8 : 12}
                         onClick={() => {
                             router.push(item.url);
-                            if (isMobile) close(); // 👈 cierre automático en mobile
+                            if (isMobile) close();
                         }}
                         style={{
                             cursor: "pointer",
@@ -238,12 +224,21 @@ export default function NavbarComponent({ children }: NavbarProps) {
                             (e.currentTarget.style.backgroundColor = "transparent")
                         }
                     >
+
                         {/* Ícono */}
-                        <Box style={{ minWidth: 26 }}>{item.icon}</Box>
+                        <Box
+                            style={{
+                                minWidth: collapsed && !isMobile ? "auto" : 26,
+                                display: "flex",
+                                justifyContent: "center",
+                            }}
+                        >
+                            {item.icon}
+                        </Box>
 
                         {/* Texto — SOLO si no está colapsado y NO es mobile */}
-                        {!collapsed && !isMobile && (
-                            <Text size="sm" fw={600}>
+                        {(!collapsed || isMobile) && (
+                            <Text size={isMobile ? "md" : "sm"} fw={600}>
                                 {item.label}
                             </Text>
                         )}

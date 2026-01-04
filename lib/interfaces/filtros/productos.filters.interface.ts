@@ -2,7 +2,7 @@ export interface ProductoFilter{
     ean: String | null
     sku: String | null
     subdpto: String | null
-    precio: Number | null
+    costoPromedio: Number | null
     casePack: Number | null
     descripcion: String | null
     proveedor: String | null

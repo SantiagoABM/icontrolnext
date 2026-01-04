@@ -1,169 +1,172 @@
 "use client";
-import { Acciones, MenuItem } from "@/lib/interfaces/global.interfaces";
-import { Producto } from "@/lib/interfaces/maestros/productos.interfaces";
-import { useLoadingStore } from "@/lib/store/useLoadingStore";
-import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
-import { useUserDataStore } from "@/lib/store/useUserDataStore";
-import { IconFileSpreadsheet, IconPlus } from "@tabler/icons-react";
-import { useRouter } from "next/router";
+
 import { useEffect, useState } from "react";
-import ResponsiveDataTable, { Column } from "../common/responsiveTable.component";
+import {
+  Badge,
+  Button,
+  Card,
+  Modal,
+  Text,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { ProductoFilter } from "@/lib/interfaces/filtros/productos.filters.interface";
-import { createProducto, getAllProductosByFilter, updateProducto } from "@/lib/actions/maestros/producto.action";
+import {
+  IconFileSpreadsheet,
+  IconLockSquareRounded,
+  IconPlus,
+} from "@tabler/icons-react";
+
+import ResponsiveDataTable, { Column } from "../common/responsiveTable.component";
+import ButtonActionTableComponent from "../common/buttonTable.component";
+import FileSelector from "../common/fileButton.component";
+
 import ProductosFilter from "./productos.filter";
 import ProductoForm from "./producto.forms";
-import { useCommonDataStore } from './../../store/useCommonDataStore';
-import ButtonActionTableComponent from "../common/buttonTable.component";
+import SubdptoFlagsAccordion from "./acordeon/subdpto.component";
+
+import { Producto } from "@/lib/interfaces/maestros/productos.interfaces";
+import { ProductoFilter } from "@/lib/interfaces/filtros/productos.filters.interface";
+
+import {
+  createProducto,
+  getAllProductosByFilter,
+  updateProducto,
+  importarSkusAction,
+} from "@/lib/actions/maestros/producto.action";
+
+import { leerSkusDesdeArchivo } from "@/lib/hooks/fileProcessor";
+import { useLoadingStore } from "@/lib/store/useLoadingStore";
+import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
 
 export default function ProductosComponent() {
+  /* ===================== STORES ===================== */
   const { show, hide } = useLoadingStore();
   const { setData } = useTitlePageStore();
-  const { commonData } = useCommonDataStore();
-  const [openForm, setOpenForm] = useState<{ open: boolean | undefined, data: Producto | null }>({ open: false, data: null })
-  // ✅ TODOS LOS HOOKS PRIMERO
+
+  /* ===================== STATES ===================== */
+  const [vista, setVista] = useState<"LISTA" | "FLAGS">("LISTA");
   const [refreshTable, setRefreshTable] = useState(false);
 
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [respaldoFiltros, setRespaldoFiltros] = useState<ProductoFilter | null>(null);
   const [totalRows, setTotalRows] = useState(0);
+  const [respaldoFiltros, setRespaldoFiltros] =
+    useState<ProductoFilter | null>(null);
 
+  const [openForm, setOpenForm] = useState<{
+    open: boolean;
+    data: Producto | null;
+  }>({ open: false, data: null });
+
+  /* ===== IMPORT SKUS ===== */
+  const [openImportModal, setOpenImportModal] = useState(false);
+  const [fileSkus, setFileSkus] = useState<File | null>(null);
+  const [skusNoEncontrados, setSkusNoEncontrados] = useState<string[]>([]);
+
+  /* ===================== HEADER ===================== */
   useEffect(() => {
     setData({
       titulo: "Maestro de Productos",
       buttons: [
         {
+          Texto: "Importar SKUS",
+          icon: IconFileSpreadsheet,
+          action: () => setOpenImportModal(true),
+        },
+        {
+          Texto:
+            vista === "LISTA"
+              ? "Mercadería Sensible"
+              : "Volver a Productos",
+          icon: IconLockSquareRounded,
+          action: () =>
+            setVista((prev) =>
+              prev === "LISTA" ? "FLAGS" : "LISTA"
+            ),
+        },
+        {
           Texto: "Agregar Producto",
           icon: IconPlus,
-          action: () => setOpenForm({ open: true, data: null }),
+          action: () =>
+            setOpenForm({ open: true, data: null }),
         },
       ],
     });
-  }, [setProductos]);
+  }, [vista]);
 
-  // ✅ AHORA SÍ, DESPUÉS DE LOS HOOKS, HACEMOS LA VALIDACIÓN
-  //   function buscarRolEnMenu(
-  //     rol: MenuItem[],
-  //     url: string
-  //   ): {
-  //     menu?: MenuItem;
-  //     accion?: Acciones;
-  //   } | null {
-  //     for (const item of menu) {
-  //       if (item.url === url) {
-  //         return { menu: item };
-  //       }
+  /* ===================== FETCH ===================== */
+  useEffect(() => {
+    if (!respaldoFiltros) return;
 
-  //       const accionEncontrada = item.acciones?.find((a) => a.url === url);
-  //       if (accionEncontrada) {
-  //         return { menu: item, accion: accionEncontrada };
-  //       }
+    const fetch = async () => {
+      show();
+      const result = await getAllProductosByFilter(
+        respaldoFiltros
+      );
 
-  //       if (item.modulos && item.modulos.length > 0) {
-  //         const resultado = buscarUrlEnMenu(item.modulos, url);
-  //         if (resultado) return resultado;
-  //       }
-  //     }
+      if (!result.success) {
+        notifications.show({
+          title: "Error",
+          message: result.mensaje,
+        });
+        hide();
+        return;
+      }
 
-  //     return null;
-  //   }
+      setProductos(result.datos || []);
+      setTotalRows(result.datos.length || 0);
+      hide();
+    };
 
-  //   const pagina = buscarUrlEnMenu(userData?.rol , ID_PAGES.EPORT);
+    fetch();
+  }, [refreshTable]);
 
-  //   // ✅ Return condicional DESPUÉS de todos los hooks
-  //   if (!pagina) {
-  //     return <UnAuthoriceComponent />;
-  //   }
-
+  /* ===================== COLUMNS ===================== */
   const columns: Column<Producto>[] = [
     {
       field: "sku",
-      headerName: "SKU",
-      align: "left",
-      sortable: true,
-      renderCell: (value, row: Producto) => (
-        <ButtonActionTableComponent texto={`${row.sku} - ${row.ean}`} action={() => {
-          setOpenForm({ open: true, data: row })
-        }}></ButtonActionTableComponent>
+      headerName: "SKU - EAN",
+      renderCell: (_, row) => (
+        <ButtonActionTableComponent
+          texto={`${row.sku} - ${row.ean}`}
+          action={() =>
+            setOpenForm({ open: true, data: row })
+          }
+        />
+      ),
+    },
+    { field: "descripcion", headerName: "Descripción" },
+    { field: "casePack", headerName: "Case Pack" },
+    { field: "subdpto", headerName: "Sub Departamento" },
+    { field: "uMedida", headerName: "U.M." },
+    { field: "costoPromedio", headerName: "C.P." },
+    {
+      field: "marcaSensible",
+      headerName: "Sensible Central",
+      align: "center",
+      renderCell: (_, r) => (
+        <Badge color={r.marcaSensible ? "blue" : "red"}>
+          {r.marcaSensible ? "Si" : "No"}
+        </Badge>
       ),
     },
     {
-      field: "descripcion",
-      headerName: "Descripción",
-      align: "left",
-      sortable: true,
-    },
-    {
-      field: "casePack",
-      headerName: "Case Pack",
-      align: "left",
-      sortable: true,
-    },
-    {
-      field: "uMedida",
-      headerName: "U.M.",
-      align: "left",
-      sortable: true,
-    },
-    {
-      field: "costoPromedio",
-      headerName: "C.P.",
-      align: "left",
-      sortable: true
-      //   renderCell: (_, row: Producto) => {
-      //     const tieneFoto = !!row.checkFace?.nombreFile;
-
-      //     if (!tieneFoto) {
-      //       return (
-      //         <Badge color="red" variant="filled">
-      //           No Tiene
-      //         </Badge>
-      //       );
-      //     }
-
-      //     return (
-      //       <Button
-      //         color={color_AzulLinea}
-      //         onClick={() => {
-      //           const url = `data:image/jpeg;base64,${row.checkFace.file_base64}`;
-      //           setImageModal({
-      //             url,
-      //             filename: row.checkFace.nombreFile,
-      //           });
-      //           setOpenModal(true);
-      //         }}
-      //       >
-      //         Ver
-      //       </Button>
-      //     );
-      //   },
+      field: "isContable",
+      headerName: "Sensible Tienda",
+      align: "center",
+      renderCell: (_, r) => (
+        <Badge color={r.isContable ? "blue" : "red"}>
+          {r.isContable ? "Si" : "No"}
+        </Badge>
+      ),
     },
   ];
-  const handlerClose = () => {
-    setOpenForm({ open: false, data: null });
-  };
 
-  const handleSave = async (
-    data: Partial<Producto>
-  ): Promise<void> => {
+  /* ===================== HANDLERS ===================== */
+  const handleSave = async (data: Partial<Producto>) => {
     show();
     const result = !data._id
       ? await createProducto(data)
       : await updateProducto(data);
-    if (!result.success) {
-      notifications.show({title: "ERROR", message: result.mensaje});
-      hide();
-      return;
-    }
-    notifications.show({title: !data._id ? "Producto Creado": "Producto Actualizado", message: result.mensaje});
-    handlerClose();
-    setRefreshTable((prev) => !prev);
-    hide();
-  };
 
-  const handlerFilter = async (filtrosCampos: ProductoFilter) => {
-    show();
-    const result = await getAllProductosByFilter(filtrosCampos);
     if (!result.success) {
       notifications.show({
         title: "Error",
@@ -172,105 +175,109 @@ export default function ProductosComponent() {
       hide();
       return;
     }
-    setProductos(result.datos || []);
-    setTotalRows(result.datos.length || 0);
+
+    notifications.show({
+      title: "Éxito",
+      message: result.mensaje,
+    });
+
+    setOpenForm({ open: false, data: null });
+    setRefreshTable((p) => !p);
     hide();
   };
 
-  //   const onExport = async () => {
-  //     if (historialData.length === 0) return;
+  const importarSkus = async () => {
+    if (!fileSkus) return;
 
-  //     const workbook = new ExcelJS.Workbook();
-  //     const sheet = workbook.addWorksheet("Historial");
+    show();
 
-  //     // Títulos
-  //     sheet.mergeCells("A1:I1");
-  //     const title = sheet.getCell("A1");
-  //     title.value = "Historial de Registros";
-  //     title.font = { size: 16, bold: true };
-  //     title.alignment = { horizontal: "center" };
+    try {
+      const skus = await leerSkusDesdeArchivo(fileSkus);
 
-  //     // Encabezados
-  //     const headers = [
-  //       "GID",
-  //       "Nombre",
-  //       "Nombre Departamento",
-  //       "Equipo",
-  //       "Concentracion Alcohol",
-  //       "Dirección IP",
-  //       "Authenticación",
-  //       "Resultado",
-  //       "Foto",
-  //     ];
-  //     sheet.addRow(headers);
-  //     sheet.getRow(2).font = { bold: true };
-  //     sheet.getRow(2).alignment = { horizontal: "center" };
+      if (skus.length === 0) {
+        notifications.show({
+          title: "Archivo inválido",
+          message: "No se encontraron SKUs",
+        });
+        return;
+      }
 
-  //     // Datos
-  //     historialData.forEach((item) => {
-  //       sheet.addRow([
-  //         item.gid,
-  //         item.name,
-  //         item.deptName,
-  //         `${item.equipmentModel}-${item.checkSerialNumber}`,
-  //         item.formattedAlcoholStrength,
-  //         item.ipAdress,
-  //         item.authentication,
-  //         item.checkResult,
-  //         "", // imagen va luego
-  //       ]);
-  //     });
+      const result = await importarSkusAction(skus);
 
-  //     // Insertar imágenes en ExcelJS
-  //     historialData.forEach((item, index) => {
-  //       if (!item.checkFace?.file_base64) return;
+      notifications.show({
+        title: "Importación",
+        message: result.mensaje,
+      });
 
-  //       const imgId = workbook.addImage({
-  //         base64: item.checkFace.file_base64,
-  //         extension: "png",
-  //       });
+      setSkusNoEncontrados(result.datos || []);
+      setRefreshTable((p) => !p);
+    } finally {
+      hide();
+    }
+  };
 
-  //       sheet.addImage(imgId, {
-  //         tl: { col: 8, row: index + 2 },
-  //         ext: { width: 60, height: 60 },
-  //       });
-
-  //       sheet.getRow(index + 3).height = 45;
-  //     });
-
-  //     // Ajustar columnas
-  //     sheet.columns.forEach((col) => {
-  //       col.width = 25;
-  //     });
-
-  //     // Descargar
-  //     const buffer = await workbook.xlsx.writeBuffer();
-  //     saveAs(new Blob([buffer]), "Historial.xlsx");
-  //   };
-
+  /* ===================== RENDER ===================== */
   return (
-    <div style={{ position: "relative" }}>
-      <ProductosFilter
-        handlerFilter={handlerFilter}
-        SetRespaldoFiltros={setRespaldoFiltros}
-      />
-      <ResponsiveDataTable
-        columns={columns}
-        rows={productos}
-        manualMode={false}
-        totalRows={totalRows}
-      />
-      {/* <ImageViewComponent
-        open={openModal}
-        handlerClose={() => setOpenModal(false)}
-        data={imageModal}
-      /> */}
-      <ProductoForm
-        opened={openForm.open}
-        initialData={openForm.data}
-        onClose={handlerClose}
-        onSave={handleSave}
-      ></ProductoForm>
+    <div>
+      {vista === "LISTA" && (
+        <>
+          <ProductosFilter
+            handlerFilter={async (f) => {
+              setRespaldoFiltros(f);
+              setRefreshTable((p) => !p);
+            }}
+            SetRespaldoFiltros={setRespaldoFiltros}
+          />
+
+          <ResponsiveDataTable
+            columns={columns}
+            rows={productos}
+            totalRows={totalRows}
+          />
+
+          <ProductoForm
+            opened={openForm.open}
+            initialData={openForm.data}
+            onClose={() =>
+              setOpenForm({ open: false, data: null })
+            }
+            onSave={handleSave}
+          />
+        </>
+      )}
+
+      {vista === "FLAGS" && <SubdptoFlagsAccordion />}
+
+      {/* ===== MODAL IMPORT ===== */}
+      <Modal
+        opened={openImportModal}
+        onClose={() => setOpenImportModal(false)}
+        title="Importar SKUs como Mercadería Sensible"
+      >
+        <FileSelector
+          file={fileSkus}
+          onChange={setFileSkus}
+          title="Se tomará solo los sku desde A2 hacia abajo"
+        />
+
+        <Button fullWidth mt="md" onClick={importarSkus}>
+          Procesar archivo
+        </Button>
+
+        {skusNoEncontrados.length > 0 && (
+          <Card mt="md">
+            <Text fw={600}>
+              SKUs no encontrados ({skusNoEncontrados.length})
+            </Text>
+
+            {skusNoEncontrados.map((s) => (
+              <Badge key={s} color="red" mr="xs" mt="xs">
+                {s}
+              </Badge>
+            ))}
+          </Card>
+        )}
+      </Modal>
     </div>
   );
 }

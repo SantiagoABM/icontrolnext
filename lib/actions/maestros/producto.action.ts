@@ -2,16 +2,14 @@
 
 import { RespuestaApi, RespuestaApiPag } from "@/lib/interfaces/global.interfaces";
 import { redirect } from "next/navigation";
-import { convertirFecha } from "@/lib/utils/constantes";
 import { ProductoFilter } from "@/lib/interfaces/filtros/productos.filters.interface";
 import { ObtenerSesion } from "../cookie.action";
 import { peticionGET, peticionPOST } from "../axios.action";
-import { Producto } from "@/lib/interfaces/maestros/productos.interfaces";
-import { useMediaQuery } from "@mantine/hooks";
-
+import { Producto, SubdptoFlag } from "@/lib/interfaces/maestros/productos.interfaces";
 export const getAllProductosByFilter = async (
     filtros: ProductoFilter): Promise<RespuestaApi<any>> => {
     try {
+        console.log(filtros)
         const datosSesion = await ObtenerSesion();
         if (!datosSesion) {
             return {
@@ -30,7 +28,7 @@ export const getAllProductosByFilter = async (
                 ean: filtros.ean,
                 sku: filtros.sku,
                 subdpto: filtros.subdpto,
-                precio: filtros.precio,
+                costoPromedio: filtros.costoPromedio,
                 casePack: filtros.casePack,
                 descripcion: filtros.descripcion,
                 proveedor: filtros.proveedor,
@@ -194,7 +192,7 @@ export const updateProducto = async (data: Partial<Producto>): Promise<Respuesta
         }
         const result = await peticionPOST({
             endpoint: `${process.env.NEXT_PUBLIC_API_UPDATE_PRODUCTO}`,
-            body:{
+            body: {
                 ean: data.ean,
                 sku: data.sku,
                 uMedida: data.uMedida,
@@ -203,7 +201,9 @@ export const updateProducto = async (data: Partial<Producto>): Promise<Respuesta
                 marca: data.marca,
                 proveedor: data.proveedor,
                 subdpto: data.subdpto,
-                descripcion: data.descripcion
+                descripcion: data.descripcion,
+                marcaSensible: data.marcaSensible,
+                isContable: data.isContable,
             }
         });
 
@@ -218,3 +218,118 @@ export const updateProducto = async (data: Partial<Producto>): Promise<Respuesta
         };
     }
 }
+export const updateFlagsSubdptoAction = async (
+    subdptos: SubdptoFlag[]
+): Promise<RespuestaApi<any>> => {
+    try {
+        // 🔐 Validar sesión
+        const datosSesion = await ObtenerSesion();
+
+        if (!datosSesion) {
+            return {
+                success: false,
+                mensaje: "No hay sesión activa",
+                datos: null,
+                sesion: false,
+            };
+        }
+
+        // 🧪 Validación mínima
+        if (!Array.isArray(subdptos) || subdptos.length === 0) {
+            return {
+                success: false,
+                mensaje: "Lista de subdepartamentos requerida",
+                datos: null,
+                sesion: true,
+            };
+        }
+
+        // 🚀 Llamada al backend
+        const result = await peticionPOST({
+            endpoint: `${process.env.NEXT_PUBLIC_API_UPDATE_FLAGS}`,
+            body: {
+                subdptos,
+            },
+        });
+
+        return result;
+    } catch (error) {
+        redirect("/auth");
+
+        return {
+            success: false,
+            mensaje: "Error al actualizar flags por subdepartamento",
+            datos: null,
+            sesion: false,
+        };
+    }
+};
+
+export const getFlagsSubdptoAction = async (
+): Promise<RespuestaApi<any>> => {
+    try {
+        // 🔐 Validar sesión
+        const datosSesion = await ObtenerSesion();
+
+        if (!datosSesion) {
+            return {
+                success: false,
+                mensaje: "No hay sesión activa",
+                datos: null,
+                sesion: false,
+            };
+        }
+
+        // 🚀 Llamada al backend
+        const result = await peticionGET({
+            endpoint: `${process.env.NEXT_PUBLIC_API_GET_FLAGS}`,
+        });
+
+        return result;
+    } catch (error) {
+        redirect("/auth");
+
+        return {
+            success: false,
+            mensaje: "Error al actualizar flags por subdepartamento",
+            datos: null,
+            sesion: false,
+        };
+    }
+};
+export const importarSkusAction = async (
+    skus: string[]
+): Promise<RespuestaApi<any>> => {
+    try {
+        // 🔐 Validar sesión
+        const datosSesion = await ObtenerSesion();
+
+        if (!datosSesion) {
+            return {
+                success: false,
+                mensaje: "No hay sesión activa",
+                datos: null,
+                sesion: false,
+            };
+        }
+
+        // 🚀 Llamada al backend
+        const result = await peticionPOST({
+            endpoint: `${process.env.NEXT_PUBLIC_API_IMPORTAR_SKUS}`,
+            body: {
+                skus,
+            },
+        });
+
+        return result;
+    } catch (error) {
+        redirect("/auth");
+
+        return {
+            success: false,
+            mensaje: "Error al actualizar flags por subdepartamento",
+            datos: null,
+            sesion: false,
+        };
+    }
+};

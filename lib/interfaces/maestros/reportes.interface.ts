@@ -1,12 +1,13 @@
-export interface Reporte {
-    _id: String | null
+export interface  Reporte {
+    _id?: String | null
     tim: number | null
     placa: String | null
     origen: String | null
     destino: String | null
-    fechaEnvio: Date | null
-    estado: boolean
-    expireAt: null
+    fechaEnvio: String | null
+    estado?: boolean
+    expireAt?: null
+    creadoPor?: String | null
     motivo: String | null
 }
 
@@ -24,7 +25,10 @@ export interface Detalle {
     subdpto: string | null,
     descripcion: String | null,
     casePack: number | 1,
+    marcaSensible?: boolean | null,
+    isContable?: boolean | null,
     uMedida: String | null,
     precioVigente: number | null,
-    costoPromedio: number | 0
+    costoPromedio: number | 0,
+    modificadoPor?: String | null
 }

@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "....",
   description: "Reportes desde ....",
+  icons: "/checkbox.svg"
 };
 
 export default function RootLayout({

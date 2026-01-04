@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
     Checkbox,
-    Button,
-    Stack,
     TextInput,
     Select,
     SimpleGrid,
+    Stack,
 } from "@mantine/core";
 import ModalCustomComponent, { TitleHead } from "../common/modalCustom.component";
 import { Usuario } from "@/lib/interfaces/maestros/usuarios.interface";
@@ -17,7 +16,6 @@ export interface UsuarioFormProps {
     onClose?: () => void;
     onSave?: (data: Partial<Usuario>) => Promise<void> | void;
     initialData?: Partial<Usuario> | null;
-    roles?: string[]; // opcional si deseas cargar roles dinámicos
 }
 
 const UsuarioForm: React.FC<UsuarioFormProps> = ({
@@ -29,7 +27,6 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
     const getInitialValues = (): Partial<Usuario> => ({
         _id: initialData?._id || null,
         dni: initialData?.dni || "",
-        tienda: initialData?.tienda || null,
         nombre: initialData?.nombre || "",
         apellido: initialData?.apellido || "",
         correo: initialData?.correo || "",
@@ -37,42 +34,92 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
         activo: initialData?.activo ?? true,
     });
 
-    // STATE PRINCIPAL DEL FORMULARIO
     const [formData, setFormData] = useState<Partial<Usuario>>(getInitialValues());
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // ACTUALIZA EL FORM AL CAMBIAR `initialData`
     useEffect(() => {
         setFormData(getInitialValues());
+        setErrors({});
     }, [initialData]);
 
-    // HANDLER GENERAL PARA CAMPOS
     const handleChange = (field: keyof Usuario, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+        setErrors((prev) => ({ ...prev, [field]: "" })); // limpia error
     };
 
-    // MAPEAMOS ROLES A SELECT
     const rolSelect = mapToSelectOptions(
         roles,
         (r) => r,
         (r) => r.toUpperCase()
     );
 
-    // SUBMIT
+    /* ======================================================
+       VALIDACIÓN DEL FORMULARIO
+    ====================================================== */
+    const validateForm = () => {
+        const newErrors: Record<string, string> = {};
+
+        if (!formData.dni || formData.dni.length !== 8) {
+            newErrors["dni"] = "Ingrese un DNI válido de 8 dígitos";
+        }
+
+        if (!formData.nombre || formData.nombre.trim() === "") {
+            newErrors["nombre"] = "El nombre es obligatorio";
+        }
+
+        if (!formData.apellido || formData.apellido.trim() === "") {
+            newErrors["apellido"] = "El apellido es obligatorio";
+        }
+
+        if (!formData.correo || !/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(formData.correo)) {
+            newErrors["correo"] = "Correo inválido";
+        }
+
+        if (!formData.rol || formData.rol === "") {
+            newErrors["rol"] = "Seleccione un rol";
+        }
+
+        setErrors(newErrors);
+
+        return Object.keys(newErrors).length === 0;
+    };
+    const generarCorreo = (nombre?: string, apellido?: string) => {
+        if (!nombre) return "";
+
+        const n = nombre.trim().toLowerCase();
+        const a = apellido?.trim().toLowerCase() ?? "";
+
+        if (n.length === 0) return "";
+
+        if (a.length > 0) {
+            return `${n[0]}${a}@control.tottus.pe`;
+        }
+
+        // Si no hay apellido → usar todo el nombre
+        return `${n}@control.tottus.pe`;
+    };
+
+    /* ======================================================
+       SUBMIT
+    ====================================================== */
     const handleSubmit = async () => {
+        if (!validateForm()) return;
         await onSave(formData);
     };
 
-    // LIMPIAR FORMULARIO
-    const handleClear = () => setFormData(getInitialValues());
+    const handleClear = () => {
+        setFormData(getInitialValues());
+        setErrors({});
+    };
 
     const titleHead: TitleHead = {
-        title: initialData?._id ? "Actualizar Usuario" : "Registrar Usuario",
+        title: formData._id ? "Actualizar Usuario" : "Registrar Usuario",
     };
 
     return (
         <ModalCustomComponent
             titleHead={titleHead}
-            ConfirmText={initialData?._id ? "Guardar" : "Crear"}
+            ConfirmText={formData._id ? "Guardar" : "Crear"}
             opened={opened}
             handlerClose={() => {
                 handleClear();
@@ -81,13 +128,9 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
             handleConfirm={handleSubmit}
         >
             <Stack gap="sm">
-
-                {/* SOLO SE MUESTRA EN EDICIÓN */}
                 {initialData && (
                     <Checkbox
                         label="Estado"
-                        variant="outline"
-                        radius="md"
                         checked={formData.activo ?? true}
                         onChange={(e) => handleChange("activo", e.currentTarget.checked)}
                     />
@@ -98,7 +141,13 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
                     label="DNI"
                     withAsterisk
                     value={formData.dni ?? ""}
-                    onChange={(e) => handleChange("dni", e.currentTarget.value)}
+                    error={errors.dni}
+                    onChange={(e) => {
+                        const value = e.currentTarget.value;
+                        const soloNumeros = value.replace(/\D/g, "");
+                        if (soloNumeros.length > 8) return;
+                        handleChange("dni", soloNumeros);
+                    }}
                 />
 
                 {/* Nombre - Apellido */}
@@ -107,14 +156,29 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
                         label="Nombre"
                         withAsterisk
                         value={formData.nombre ?? ""}
-                        onChange={(e) => handleChange("nombre", e.currentTarget.value)}
+                        error={errors.nombre}
+                        onChange={(e) => {
+                            const nombre = e.currentTarget.value;
+                            const nuevoCorreo = generarCorreo(nombre, formData.apellido ?? "");
+
+                            handleChange("nombre", nombre);
+                            handleChange("correo", nuevoCorreo);
+                        }}
                     />
+
                     <TextInput
                         label="Apellido"
                         withAsterisk
                         value={formData.apellido ?? ""}
-                        onChange={(e) => handleChange("apellido", e.currentTarget.value)}
+                        error={errors.apellido}
+                        onChange={(e) => {
+                            const apellido = e.currentTarget.value;
+                            const nuevoCorreo = generarCorreo(formData.nombre ?? "", apellido);
+                            handleChange("apellido", apellido);
+                            handleChange("correo", nuevoCorreo);
+                        }}
                     />
+
                 </SimpleGrid>
 
                 {/* Correo */}
@@ -122,14 +186,17 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
                     label="Correo"
                     withAsterisk
                     value={formData.correo ?? ""}
-                    onChange={(e) => handleChange("correo", e.currentTarget.value)}
+                    error={errors.correo}
+                    disabled
                 />
 
                 {/* Rol */}
                 <Select
                     label="Rol"
+                    withAsterisk
                     placeholder="Seleccionar..."
                     value={formData.rol || null}
+                    error={errors.rol}
                     onChange={(val) => handleChange("rol", val)}
                     data={rolSelect}
                     searchable

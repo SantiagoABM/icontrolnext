@@ -56,7 +56,7 @@ export function GlobalLoader() {
       style={{ outline: 'none' }} // Quitar el outline del focus
     >
       <Center h="100vh">
-        <Loader color="rgba(204, 0, 0, 1)" />
+        <Loader color="green" />
       </Center>
     </Overlay>
   );

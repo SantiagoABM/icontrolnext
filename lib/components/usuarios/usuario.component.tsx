@@ -13,7 +13,7 @@ import { getAllProductosByFilter } from "@/lib/actions/maestros/producto.action"
 import { useCommonDataStore } from './../../store/useCommonDataStore';
 import { Usuario } from "@/lib/interfaces/maestros/usuarios.interface";
 import { UsuarioFilter } from "@/lib/interfaces/filtros/usuarios.filters.interface";
-import { getAllUsuariosByFilter } from "@/lib/actions/maestros/usuario.actions";
+import { createUsuario, getAllUsuariosByFilter, updateUsuario } from "@/lib/actions/maestros/usuario.actions";
 import UsuarioFilters from "./usuarios.filter";
 import { Badge } from "@mantine/core";
 import ButtonActionTableComponent from "../common/buttonTable.component";
@@ -77,6 +77,29 @@ export default function UsuarioComponent() {
     //   if (!pagina) {
     //     return <UnAuthoriceComponent />;
     //   }
+    useEffect(() => {
+        if (!respaldoFiltros) return; // si no hay filtros previos, no carga nada
+
+        const refetch = async () => {
+            show();
+            const result = await getAllUsuariosByFilter(respaldoFiltros);
+
+            if (!result.success) {
+                notifications.show({
+                    title: "Error",
+                    message: result.mensaje,
+                });
+                hide();
+                return;
+            }
+
+            setUsuarios(result.datos || []);
+            setTotalRows(result.datos?.length || 0);
+            hide();
+        };
+
+        refetch();
+    }, [refreshTable]);
 
     const columns: Column<Producto>[] = [
         {
@@ -122,6 +145,7 @@ export default function UsuarioComponent() {
 
             }
         },
+        
 
     ];
     const handlerClose = () => {
@@ -132,17 +156,18 @@ export default function UsuarioComponent() {
         data: Partial<Producto>
     ): Promise<void> => {
         show();
-        // const result = !data._id
-        //   ? await createTipoCambio(data)
-        //   : await updateTipoCambio(data);
-        // if (!result.success) {
-        //   notifications.show({title: "ERROR", message: result.mensaje});
-        //   hide();
-        //   return;
-        // }
-        // notifications.show({title: !data._id ? "Producto Creado": "Producto Actualizado", message: result.mensaje});
-        // handlerClose();
-        // setRefreshTable((prev) => !prev);
+        const result = !data._id
+            ? await createUsuario(data)
+            : await updateUsuario(data);
+        if (!result.success) {
+            console.log(result.mensaje)
+            notifications.show({ title: "ERROR", message: result.mensaje });
+            hide();
+            return;
+        }
+        notifications.show({ title: !data._id ? "Usuario Creado" : "Usuario Actualizado", message: result.mensaje });
+        handlerClose();
+        setRefreshTable((prev) => !prev);
         hide();
     };
 

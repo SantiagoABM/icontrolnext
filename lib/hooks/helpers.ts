@@ -1,13 +1,13 @@
 export function base64ToBlob(base64String: string, contentType: string): Blob {
-    const base64Data = base64String.split(',')[1] || base64String;
-    const byteCharacters = atob(base64Data);
-    const byteArrays = new Uint8Array(byteCharacters.length);
+  const base64Data = base64String.split(',')[1] || base64String;
+  const byteCharacters = atob(base64Data);
+  const byteArrays = new Uint8Array(byteCharacters.length);
 
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteArrays[i] = byteCharacters.charCodeAt(i);
-    }
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteArrays[i] = byteCharacters.charCodeAt(i);
+  }
 
-    return new Blob([byteArrays], { type: contentType });
+  return new Blob([byteArrays], { type: contentType });
 }
 
 
@@ -26,3 +26,8 @@ export function base64ATexto<T>(base64: string) {
   const text = new TextDecoder().decode(bytes);
   return text;
 }
+export const formatDate = (date: any) => {
+  if (!date) return "";
+  const d = new Date(date);
+  return d.toISOString().split("T")[0];
+};

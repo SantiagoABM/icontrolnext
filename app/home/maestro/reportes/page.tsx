@@ -1,3 +1,4 @@
+import ReporteComponent from "@/lib/components/reportes/reporte.component";
 import UsuarioComponent from "@/lib/components/usuarios/usuario.component";
 import { Metadata } from "next";
 
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Reporte() {
-    return (<UsuarioComponent></UsuarioComponent>)
+    return (<ReporteComponent></ReporteComponent>)
 }

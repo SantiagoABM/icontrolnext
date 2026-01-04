@@ -26,6 +26,8 @@ import { GuardarSesion } from "@/lib/actions/cookie.action";
 import { DatosSesion, UsuarioSesion } from "@/lib/interfaces/authentication.interfaces";
 import { useCommonDataStore } from "@/lib/store/useCommonDataStore";
 import { getAllSubdptos } from "@/lib/actions/maestros/producto.action";
+import { useUserDataStore } from "@/lib/store/useUserDataStore";
+import { Usuario } from './../../interfaces/maestros/usuarios.interface';
 
 declare global {
     interface Window {
@@ -49,10 +51,11 @@ export default function LoginPageComponent() {
     const { resetCommonData, setCommonData } = useCommonDataStore();
     const [error, setError] = useState("");
     //   const [empresas, setEmpresas] = useState<EmpresaSesion[]>([]);
-    const [usuario, setUsuario] = useState<UsuarioSesion | null>(null);
+    const { userData, setUserData } = useUserDataStore();
     //   const [empresa, setEmpresa] = useState<EmpresaSesion | null>(null);
     // const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [usuario  , setUsuario ] = useState<UsuarioSesion | null>(null);
     // const [turnstileWidgetId, setTurnstileWidgetId] = useState<string | null>(
     //     null
     // );
@@ -102,14 +105,13 @@ export default function LoginPageComponent() {
             setLoading(false);
             return;
         }
-
-        setUsuario(result.datos);
+        console.log("Usuario en login:", result.datos);
+        setUsuario(result.datos)
+        setUserData({ userData: result.datos });
         setLoading(false);
     };
 
     const guardarSesion = async () => {
-        // Validación temprana antes de setLoading
-        console.log(usuario)
         if (!usuario) {
             return;
         }
@@ -120,6 +122,7 @@ export default function LoginPageComponent() {
             nombre: usuario.nombre,
             rol: usuario.rol,
             token: usuario.token,
+            updatePass: usuario.updatePass
         };
         const res = await GuardarSesion({ datosSesion });
         if (!res.success) { notifications.show({ title: "ERROR", message: "No se pudo guardar la sesión" }) }
@@ -156,6 +159,7 @@ export default function LoginPageComponent() {
     useEffect(() => {
         if (loading) {
             setLoading(false)
+            hide()
         }
     }, []);
 
