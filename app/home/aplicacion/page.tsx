@@ -1,7 +1,8 @@
-import HomeComponent from "@/lib/components/home/home";
+
+import ApkDownloadCard from "@/lib/download/download.component";
 
 export default function AplicacionPage() {
   return (
-    <HomeComponent></HomeComponent>
+    <ApkDownloadCard></ApkDownloadCard>
   );
-}
+} 
