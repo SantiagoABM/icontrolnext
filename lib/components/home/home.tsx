@@ -5,6 +5,9 @@ import { getReportesByMotivo } from "@/lib/actions/maestros/reporte.action";
 import { Detalle, Reporte } from "@/lib/interfaces/maestros/reportes.interface";
 import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
 import ExcelJS from "exceljs";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { useRef } from "react";
 
 import {
   Card,
@@ -39,6 +42,9 @@ import { color_PrimarioDark } from './../../utils/constantes';
 import { saveAs } from "file-saver";
 import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { formatDate } from "@/lib/hooks/helpers";
+import { validarRolUsuario } from "@/lib/hooks/verificarRol";
+import UnAuthoriceComponent from "../common/unauthorice.component";
+import { useUserDataStore } from "@/lib/store/useUserDataStore";
 
 ChartJS.register(
   ArcElement,
@@ -53,8 +59,7 @@ export default function HomeComponent() {
   const { setData } = useTitlePageStore();
   const isMobile = useMediaQuery("(max-width: 900px)");
   const { show, hide } = useLoadingStore();
-
-
+  const { userData } = useUserDataStore();
   //exportarExcelTIM
   const [selectedTim, setSelectedTim] = useState<Reporte | null>(null);
   const [limiteCriticos, setLimiteCrit] = useState<number>(10);
@@ -85,6 +90,11 @@ export default function HomeComponent() {
           icon: IconFileExport,
           action: () => exportarExcelTIM(),
         },
+        // {
+        //   Texto: "Exportar PDF",
+        //   icon: IconFileExport,
+        //   action: () => exportarPDF(),
+        // },
       ]
     });
   }, [selectedTim, detalles.length > 0]);
@@ -105,6 +115,14 @@ export default function HomeComponent() {
 
   };
 
+  const ROLES_PERMITIDOS = ["administrador", "supervisor", "operador"];
+
+  // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
+  const tieneAcceso = validarRolUsuario(userData, ROLES_PERMITIDOS);
+
+  if (!tieneAcceso) {
+    return <UnAuthoriceComponent />;
+  }
   const fetchDetalle = async () => {
 
     if (!selectedTim?.tim) return;
@@ -511,8 +529,9 @@ export default function HomeComponent() {
 
 
   /* ===================== HELPERS ===================== */
+  const graficosRef = useRef<HTMLDivElement>(null);
+  const tablasRef = useRef<HTMLDivElement>(null);
 
-  
 
   const handleLimpiarFiltros = () => {
     setSelectedDepartamento(null);
@@ -521,7 +540,46 @@ export default function HomeComponent() {
   };
 
   /* ===================== SECCIONES RENDER ===================== */
+  const exportarPDF = async () => {
+    show();
 
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let yPosition = 10;
+
+    const captureAndAdd = async (ref: HTMLDivElement | null, title: string) => {
+      if (!ref) return;
+
+      // Título
+      pdf.setFontSize(14);
+      pdf.text(title, 10, yPosition);
+      yPosition += 5;
+
+      const canvas = await html2canvas(ref, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (yPosition + imgHeight > 280) {
+        pdf.addPage();
+        yPosition = 10;
+      }
+
+      pdf.addImage(imgData, "PNG", 10, yPosition, imgWidth, imgHeight);
+      yPosition += imgHeight + 10;
+    };
+
+    await captureAndAdd(graficosRef.current, "Gráficos");
+    await captureAndAdd(tablasRef.current, "Tablas");
+
+    pdf.save(`TIM_${selectedTim?.tim}_dashboard.pdf`);
+
+    hide();
+  };
   const renderResumen = () =>
     detallesFiltrados.length > 0 ? (
       <Grid mt="xl" gutter="lg">
@@ -940,11 +998,15 @@ export default function HomeComponent() {
           </Tabs.Panel>
 
           <Tabs.Panel value="graficos">
-            {renderGraficos()}
+            <div ref={graficosRef}>
+              {renderGraficos()}
+            </div>
           </Tabs.Panel>
 
           <Tabs.Panel value="tablas">
-            {renderTablas()}
+            <div ref={tablasRef}>
+              {renderTablas()}
+            </div>
           </Tabs.Panel>
         </Tabs>
       ) : (

@@ -1,4 +1,5 @@
 "use client";
+
 import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
 import {
   Center,
@@ -9,11 +10,12 @@ import {
   Button,
   Paper,
   Box,
+  Divider,
 } from "@mantine/core";
 import {
   IconArrowLeft,
-  IconShoppingBag,
-  IconShieldExclamation,
+  IconLockAccess,
+  IconShieldLock,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -24,14 +26,14 @@ export default function UnAuthoriceComponent() {
 
   useEffect(() => {
     resetData();
-  }, []);
+  }, [resetData]);
 
   return (
     <Box
       style={{
-        background: "linear-gradient(135deg, #f8f9fc, #eef1f6)",
+        background: "linear-gradient(135deg, #f4f6fb, #eef2f7)",
         minHeight: "100vh",
-        paddingTop: "5rem",
+        paddingTop: "6rem",
       }}
     >
       <Container size="sm">
@@ -39,63 +41,64 @@ export default function UnAuthoriceComponent() {
           shadow="lg"
           radius="lg"
           p="xl"
+          withBorder
           style={{
             backgroundColor: "white",
-            border: "1px solid #e5e7eb",
             textAlign: "center",
           }}
         >
           {/* Ícono principal */}
-          <Center mb="md">
-            <IconShoppingBag size={90} color="#1E90FF" />
+          <Center mb="lg">
+            <IconShieldLock size={88} />
           </Center>
 
           <Title
             order={1}
             style={{
-              fontSize: "4.5rem",
+              fontSize: "4.2rem",
               fontWeight: 900,
-              color: "#1E1E1E",
+              color: "#1f2937",
             }}
           >
             401
           </Title>
 
           <Title
-            order={2}
+            order={3}
             mt="md"
-            mb="sm"
+            mb="xs"
             style={{ fontWeight: 700, color: "#374151" }}
           >
-            Acceso no autorizado
+            Acceso restringido
           </Title>
 
-          <Text size="lg" c="dimmed" maw={500} mx="auto" mb="xl">
-            Parece que esta sección del centro comercial digital requiere un
-            permiso especial.  
-            Por favor regrese o contacte a un administrador.
+          <Divider my="md" />
+
+          <Text size="md" c="dimmed" maw={520} mx="auto">
+            No cuenta con los permisos necesarios para acceder a este módulo.
+            <br />
+            Si considera que esto es un error, comuníquese con el administrador
+            del sistema.
           </Text>
 
-          {/* Botones tipo mall wayfinding */}
-          <Group>
+          {/* Acciones */}
+          <Group justify="center" mt="xl">
             <Button
               size="md"
-              variant="outline"
-              color="blue"
+              variant="default"
               leftSection={<IconArrowLeft size={18} />}
               onClick={() => router.back()}
             >
-              Volver atrás
+              Volver
             </Button>
 
             <Button
               size="md"
               variant="filled"
-              color="blue"
-              leftSection={<IconShieldExclamation size={18} />}
-              onClick={() => router.push("/")}
+              leftSection={<IconLockAccess size={18} />}
+              onClick={() => router.push("/home")}
             >
-              Ir al inicio
+              Ir al panel principal
             </Button>
           </Group>
         </Paper>

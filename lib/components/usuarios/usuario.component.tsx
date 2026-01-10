@@ -18,6 +18,8 @@ import UsuarioFilters from "./usuarios.filter";
 import { Badge } from "@mantine/core";
 import ButtonActionTableComponent from "../common/buttonTable.component";
 import UsuarioForm from "./usuario.forms";
+import { validarRolUsuario } from "@/lib/hooks/verificarRol";
+import UnAuthoriceComponent from "../common/unauthorice.component";
 
 export default function UsuarioComponent() {
     const { show, hide } = useLoadingStore();
@@ -26,7 +28,7 @@ export default function UsuarioComponent() {
     const [openForm, setOpenForm] = useState<{ open: boolean | undefined, data: Usuario | null }>({ open: false, data: null })
     // ✅ TODOS LOS HOOKS PRIMERO
     const [refreshTable, setRefreshTable] = useState(false);
-
+    const { userData } = useUserDataStore();
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [respaldoFiltros, setRespaldoFiltros] = useState<UsuarioFilter | null>(null);
     const [totalRows, setTotalRows] = useState(0);
@@ -44,6 +46,14 @@ export default function UsuarioComponent() {
         });
     }, [setUsuarios]);
 
+    const ROLES_PERMITIDOS = ["administrador"];
+
+    // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
+    const tieneAcceso = validarRolUsuario(userData, ROLES_PERMITIDOS);
+
+    if (!tieneAcceso) {
+        return <UnAuthoriceComponent />;
+    }
     // ✅ AHORA SÍ, DESPUÉS DE LOS HOOKS, HACEMOS LA VALIDACIÓN
     //   function buscarRolEnMenu(
     //     rol: MenuItem[],
@@ -145,7 +155,7 @@ export default function UsuarioComponent() {
 
             }
         },
-        
+
 
     ];
     const handlerClose = () => {

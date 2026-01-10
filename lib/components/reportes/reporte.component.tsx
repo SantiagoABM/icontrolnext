@@ -24,6 +24,8 @@ import ModalCustomComponent from "../common/modalCustom.component";
 import FileSelector from "../common/fileButton.component";
 import { processExcelReportFront } from "@/lib/hooks/fileProcessor";
 import { useUserDataStore } from "@/lib/store/useUserDataStore";
+import { validarRolUsuario } from "@/lib/hooks/verificarRol";
+import UnAuthoriceComponent from "../common/unauthorice.component";
 
 export default function ReporteComponent() {
     const { show, hide } = useLoadingStore();
@@ -65,6 +67,14 @@ export default function ReporteComponent() {
             ],
         });
     }, [setData]);
+    const ROLES_PERMITIDOS = ["administrador", "supervisor", "operador"];
+    
+        // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
+        const tieneAcceso = validarRolUsuario(userData, ROLES_PERMITIDOS);
+    
+        if (!tieneAcceso) {
+            return <UnAuthoriceComponent />;
+        }
 
     // ============================
     // COLUMNAS

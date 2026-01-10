@@ -36,6 +36,9 @@ import {
 import { leerSkusDesdeArchivo } from "@/lib/hooks/fileProcessor";
 import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
+import { validarRolUsuario } from "@/lib/hooks/verificarRol";
+import UnAuthoriceComponent from "../common/unauthorice.component";
+import { useUserDataStore } from "@/lib/store/useUserDataStore";
 
 export default function ProductosComponent() {
   /* ===================== STORES ===================== */
@@ -50,6 +53,7 @@ export default function ProductosComponent() {
   const [totalRows, setTotalRows] = useState(0);
   const [respaldoFiltros, setRespaldoFiltros] =
     useState<ProductoFilter | null>(null);
+    const { userData } = useUserDataStore();
 
   const [openForm, setOpenForm] = useState<{
     open: boolean;
@@ -118,7 +122,14 @@ export default function ProductosComponent() {
 
     fetch();
   }, [refreshTable]);
+  const ROLES_PERMITIDOS = ["administrador", "supervisor"];
 
+  // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
+  const tieneAcceso = validarRolUsuario(userData, ROLES_PERMITIDOS);
+
+  if (!tieneAcceso) {
+    return <UnAuthoriceComponent />;
+  }
   /* ===================== COLUMNS ===================== */
   const columns: Column<Producto>[] = [
     {

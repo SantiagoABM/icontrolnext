@@ -147,7 +147,21 @@ export default function NavbarComponent({ children }: NavbarProps) {
         loadUserData();
     }, [hide, show]);
 
-    const menuItems = useMemo(() => normalizeSidebar(menus ?? []), [menus]);
+    // const menuItems = useMemo(() => normalizeSidebar(menus ?? []), [menus]);
+
+    const menuItemsByRole = useMemo(() => {
+        if (!menus || !userData?.rol) return [];
+
+        return menus
+            .filter((item) =>
+                item.rolesPermitidos.includes(userData.rol)
+            )
+            .sort((a, b) => Number(a.orden) - Number(b.orden));
+    }, [menus, userData?.rol]);
+    const menuItems = useMemo(
+        () => normalizeSidebar(menuItemsByRole),
+        [menuItemsByRole]
+    );
 
     // Theme styles
     const getThemeStyles = useCallback(
@@ -239,13 +253,6 @@ export default function NavbarComponent({ children }: NavbarProps) {
                         {/* Texto — SOLO si no está colapsado y NO es mobile */}
                         {(!collapsed || isMobile) && (
                             <Text size={isMobile ? "md" : "sm"} fw={600}>
-                                {item.label}
-                            </Text>
-                        )}
-
-                        {/* Mobile siempre muestra texto */}
-                        {isMobile && (
-                            <Text size="md" fw={600}>
                                 {item.label}
                             </Text>
                         )}
