@@ -151,6 +151,7 @@ export async function processExcelReportFront(
         uRecibidas: 0,
         fechavencimiento: "",
         observacion: "PERTENECE",
+        modificadoPor: "",
         fastRegister: false,
       };
 

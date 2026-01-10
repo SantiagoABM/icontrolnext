@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Select, Flex, Text, Badge } from "@mantine/core";
+import { Select, Flex, Text, Badge, Tooltip, ActionIcon } from "@mantine/core";
 import ModalCustomComponent, { TitleHead } from "../../common/modalCustom.component";
 import { Detalle, Reporte } from "@/lib/interfaces/maestros/reportes.interface";
 import ResponsiveDataTable, { Column } from "../../common/responsiveTable.component";
@@ -21,6 +21,7 @@ import {
 import { saveAs } from "file-saver";
 import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { formatDate } from "@/lib/hooks/helpers";
+import { IconFile, IconRefresh } from "@tabler/icons-react";
 
 
 export interface DetallesModalProps {
@@ -57,6 +58,20 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
 
         cargar();
     }, [opened, initialData?.tim]);
+    const recargarDatos = async () => {
+        if (!initialData?.tim) return;
+
+        show();
+        try {
+            const resp = await getDetalleReporteByTim(initialData.tim);
+            setRowsOriginales(resp?.datos ?? []);
+            // 👉 si quieres conservar filtros, NO llames limpiarFiltros()
+            // limpiarFiltros();
+        } finally {
+            hide();
+        }
+    };
+
     const columns: Column<Detalle>[] = [
         {
             field: "sku",
@@ -488,6 +503,7 @@ entidad beneficiada.`.trim();
             <>
                 {/* ===================== FILTROS ===================== */}
                 <Flex gap="md" align="flex-end" wrap="wrap" mb="md">
+
                     <Select
                         label="Departamento"
                         placeholder="Seleccione..."
@@ -573,21 +589,31 @@ entidad beneficiada.`.trim();
                         Limpiar
                     </button>
                     {initialData?.motivo === "D" && (
-                        <button
-                            onClick={exportarWordMotivoT}
-                            style={{
-                                padding: "8px 16px",
-                                background: "#2F80ED",
-                                color: "white",
-                                borderRadius: 8,
-                                border: "none",
-                                cursor: "pointer",
-                                height: 40,
-                            }}
-                        >
-                            Exportar Word
-                        </button>
+
+                        <Tooltip label="Exportar Word">
+                            <ActionIcon
+                                variant="filled"
+                                color="blue"
+                                size="lg"
+                                onClick={exportarWordMotivoT}
+                                style={{ height: 40 }}
+                            >
+                                <IconFile size={20} />
+                            </ActionIcon>
+                        </Tooltip>
                     )}
+                    <Tooltip label="Recargar datos">
+                        <ActionIcon
+                            variant="filled"
+                            color="blue"
+                            size="lg"
+                            onClick={recargarDatos}
+                            style={{ height: 40 }}
+                        >
+                            <IconRefresh size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+
                 </Flex>
 
                 {/* ===================== TABLA ===================== */}
