@@ -90,14 +90,14 @@ export default function HomeComponent() {
           icon: IconFileExport,
           action: () => exportarExcelTIM(),
         },
-        // {
-        //   Texto: "Exportar PDF",
-        //   icon: IconFileExport,
-        //   action: () => exportarPDF(),
-        // },
+        {
+          Texto: "Exportar PDF",
+          icon: IconFileExport,
+          action: () => exportarPDF(),
+        },
       ]
     });
-  }, [selectedTim, detalles.length > 0]);
+  }, [selectedTim, detalles]);
 
   const fetchReportes = async () => {
     show();
@@ -187,6 +187,9 @@ export default function HomeComponent() {
 
   /*Funcion exportar excel*/
   const exportarExcelTIM = async () => {
+    console.log("EXPORTANDO TIM:", selectedTim?.tim);
+    console.log("DETALLES TIM:", detalles[0]?.tim);
+
     console.log(selectedTim);
     if (!selectedTim?.tim) {
       notifications.show({
@@ -542,25 +545,30 @@ export default function HomeComponent() {
   /* ===================== SECCIONES RENDER ===================== */
   const exportarPDF = async () => {
     show();
+    console.log("graficosRef:", graficosRef.current);
+    console.log("tablasRef:", tablasRef.current);
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     let yPosition = 10;
 
-    const captureAndAdd = async (ref: HTMLDivElement | null, title: string) => {
+    const captureAndAdd = async (
+      ref: HTMLDivElement | null,
+      title: string
+    ) => {
       if (!ref) return;
 
-      // Título
-      pdf.setFontSize(14);
-      pdf.text(title, 10, yPosition);
-      yPosition += 5;
+      await new Promise(r => setTimeout(r, 300)); // charts
 
       const canvas = await html2canvas(ref, {
         scale: 2,
         backgroundColor: "#ffffff",
+        useCORS: true,
       });
 
       const imgData = canvas.toDataURL("image/png");
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
       const imgWidth = pageWidth - 20;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
@@ -572,6 +580,7 @@ export default function HomeComponent() {
       pdf.addImage(imgData, "PNG", 10, yPosition, imgWidth, imgHeight);
       yPosition += imgHeight + 10;
     };
+
 
     await captureAndAdd(graficosRef.current, "Gráficos");
     await captureAndAdd(tablasRef.current, "Tablas");
@@ -1012,8 +1021,17 @@ export default function HomeComponent() {
       ) : (
         <>
           {renderResumen()}
-          {renderGraficos()}
-          {renderTablas()}
+          <div
+            ref={graficosRef}
+          >
+            {renderGraficos()}
+          </div>
+
+          <div
+            ref={tablasRef}
+          >
+            {renderTablas()}
+          </div>
         </>
       )}
     </div>

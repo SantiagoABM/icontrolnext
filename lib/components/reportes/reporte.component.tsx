@@ -122,7 +122,7 @@ export default function ReporteComponent() {
             sortable: true,
             renderCell: (_, row) => (
                 <Badge color={row.estado ? "green" : "red"}>
-                    {row.estado ? "Activo" : "Inactivo"}
+                    {row.estado ? "Activo" : "Finalizado"}
                 </Badge>
             ),
         },

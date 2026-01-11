@@ -26,7 +26,7 @@ import { ReporteFilter } from "@/lib/interfaces/filtros/reportes.filters.interfa
 const Estados = [
     {
         value: "true",
-        label: "No Finalizado",
+        label: "Activo",
     },
     {
         value: "false",

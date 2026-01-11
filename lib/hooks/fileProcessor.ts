@@ -1,9 +1,15 @@
-import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
+
 import { Detalle, Reporte } from "../interfaces/maestros/reportes.interface";
 import { CreateReporte } from "../actions/maestros/reporte.action";
 import { UsuarioSesion } from "../interfaces/authentication.interfaces";
 import { CargarDetallesByLote } from "../actions/maestros/detalle.action";
 
+/**
+ * ============================
+ * PROCESAR EXCEL TIM (FRONTEND)
+ * ============================
+ */
 export async function processExcelReportFront(
   file: File,
   user: UsuarioSesion
@@ -16,30 +22,51 @@ export async function processExcelReportFront(
       return { success: false, message: "No se proporcionó ningún archivo" };
     }
 
-    if (!user || !user.nombre) {
+    if (!user?.nombre) {
       return {
         success: false,
-        message:
-          "No hay un usuario válido en sesión. Por favor, inicia sesión nuevamente.",
+        message: "No hay un usuario válido en sesión",
       };
     }
 
     // ============================
-    // LEER ARCHIVO EXCEL
+    // LEER ARCHIVO CON SHEETJS
     // ============================
-    const buffer = await file.arrayBuffer();
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
 
-    const sheet = workbook.getWorksheet("Página1_1");
+    console.log("Hojas detectadas:", workbook.SheetNames);
+
+    if (workbook.SheetNames.length === 0) {
+      return {
+        success: false,
+        message: "El archivo no contiene hojas válidas",
+      };
+    }
+
+    // 👉 Usa la primera hoja o busca por nombre
+    const sheetName =
+      workbook.SheetNames.find(n => n.trim() === "Página1_1") ??
+      workbook.SheetNames[0];
+
+    const sheet = workbook.Sheets[sheetName];
+
     if (!sheet) {
       return {
         success: false,
-        message: 'No se encontró la hoja "Página1_1" en el archivo',
+        message: 'No se encontró la hoja "Página1_1"',
       };
     }
 
-    if (sheet.rowCount < 10) {
+    // ============================
+    // CONVERTIR A MATRIZ (FILAS)
+    // ============================
+    const rows: any[][] = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: "",
+    });
+
+    if (rows.length < 10) {
       return {
         success: false,
         message: "El archivo no tiene suficientes filas (mínimo 10)",
@@ -49,35 +76,18 @@ export async function processExcelReportFront(
     // ============================
     // HELPERS
     // ============================
-    const getCellValue = (row: ExcelJS.Row, cellNumber: number): any => {
-      const cell = row.getCell(cellNumber);
+    const getCell = (row: number, col: number) =>
+      rows[row - 1]?.[col - 1] ?? "";
 
-      if (cell.value === null || cell.value === undefined) return "";
-
-      if (typeof cell.value === "object" && "result" in cell.value) {
-        return (cell.value as any).result;
-      }
-
-      if (typeof cell.value === "object" && "richText" in cell.value) {
-        return (cell.value as any).richText.map((t: any) => t.text).join("");
-      }
-
-      if (typeof cell.value === "object" && "text" in cell.value) {
-        return (cell.value as any).text;
-      }
-
-      return cell.value;
-    };
-
-    const extractValueAfterColon = (rawValue: any): string => {
-      const str = String(rawValue ?? "").trim();
+    const extractValueAfterColon = (value: any): string => {
+      const str = String(value).trim();
       return str.includes(":")
         ? str.split(":").slice(1).join(":").trim()
         : str;
     };
 
-    const extractTim = (rawValue: any): number => {
-      const str = String(rawValue ?? "").trim();
+    const extractTim = (value: any): number => {
+      const str = String(value).trim();
       const afterColon = str.includes(":") ? str.split(":")[1] : str;
       const numbers = afterColon.replace(/\D/g, "");
       return Number(numbers) || 0;
@@ -87,26 +97,29 @@ export async function processExcelReportFront(
     // CREAR CABECERA REPORTE
     // ============================
     const reporteTim: Reporte = {
-      tim: extractTim(getCellValue(sheet.getRow(4), 1)),
-      placa: extractValueAfterColon(getCellValue(sheet.getRow(6), 1)),
-      origen: extractValueAfterColon(getCellValue(sheet.getRow(7), 1)),
-      destino: extractValueAfterColon(getCellValue(sheet.getRow(8), 1)),
-      fechaEnvio: extractValueAfterColon(getCellValue(sheet.getRow(9), 1)),
-      creadoPor: String(user.nombre),
+      tim: extractTim(getCell(4, 1)),
+      placa: extractValueAfterColon(getCell(6, 1)),
+      origen: extractValueAfterColon(getCell(7, 1)),
+      destino: extractValueAfterColon(getCell(8, 1)),
+      fechaEnvio: extractValueAfterColon(getCell(9, 1)),
+      creadoPor: user.nombre,
       motivo: "T",
     };
 
-    if (reporteTim.tim === 0) {
+    console.log("TIM detectado:", reporteTim.tim);
+
+    if (!reporteTim.tim) {
       return {
         success: false,
-        message: "El número TIM no es válido en la fila 4",
+        message: "El TIM no es válido (fila 4)",
       };
     }
 
     // ============================
-    // ENVIAR CABECERA AL BACKEND
+    // CREAR REPORTE (BACKEND)
     // ============================
     const reporteCreado = await CreateReporte(reporteTim);
+
     if (!reporteCreado.success) {
       return {
         success: false,
@@ -115,39 +128,39 @@ export async function processExcelReportFront(
     }
 
     // ============================
-    // PROCESAR DETALLES POR LOTES
+    // PROCESAR DETALLES
     // ============================
     const lote: Detalle[] = [];
     const loteSize = 100;
     let totalProcesados = 0;
 
-    for (let i = 12; i <= sheet.rowCount; i++) {
-      const row = sheet.getRow(i);
-
-      const sku = String(getCellValue(row, 6) ?? "").trim();
+    for (let i = 12; i <= rows.length; i++) {
+      const sku = String(getCell(i, 6)).trim();
       if (!sku) continue;
-      const valorK = Number(getCellValue(row, 11));
-      const valorI = Number(getCellValue(row, 9));
+
+      const valorK = Number(getCell(i, 11));
+      const valorI = Number(getCell(i, 9));
 
       const uEnviadas =
         !isNaN(valorK) && valorK > 0
           ? valorK
           : !isNaN(valorI)
-            ? valorI
-            : 0;
+          ? valorI
+          : 0;
+
       const detalle: Detalle = {
         _id: "",
         tim: reporteTim.tim,
-        olpn: String(getCellValue(row, 1) ?? ""),
+        olpn: String(getCell(i, 1)),
         ean: "",
-        subdpto: String(getCellValue(row, 5) ?? ""),
+        subdpto: String(getCell(i, 5)),
         sku,
-        descripcion: String(getCellValue(row, 7) ?? ""),
-        casePack: Number(getCellValue(row, 8)) || 0,
+        descripcion: String(getCell(i, 7)),
+        casePack: Number(getCell(i, 8)) || 0,
         uMedida: "",
         costoPromedio: 0,
         precioVigente: 0,
-        uEnviadas: uEnviadas,
+        uEnviadas,
         uRecibidas: 0,
         fechavencimiento: "",
         observacion: "PERTENECE",
@@ -156,32 +169,25 @@ export async function processExcelReportFront(
       };
 
       lote.push(detalle);
-      console.log("Detalle agregado al lote:", lote);
       totalProcesados++;
 
-      // ============================
-      // ENVIAR LOTE
-      // ============================
       if (lote.length === loteSize) {
         const resp = await CargarDetallesByLote(lote);
-
         if (!resp.success) {
           return {
             success: false,
             message: `Error al enviar lote: ${resp.mensaje}`,
           };
         }
-
         lote.length = 0;
       }
     }
 
     // ============================
-    // ENVIAR ÚLTIMO LOTE
+    // ÚLTIMO LOTE
     // ============================
     if (lote.length > 0) {
       const resp = await CargarDetallesByLote(lote);
-
       if (!resp.success) {
         return {
           success: false,
@@ -209,29 +215,30 @@ export async function processExcelReportFront(
   }
 }
 
-export async function leerSkusDesdeArchivo (file: File): Promise<string[]> {
-  const buffer = await file.arrayBuffer();
+/**
+ * ============================
+ * LEER SKUS DESDE ARCHIVO
+ * ============================
+ */
+export async function leerSkusDesdeArchivo(file: File): Promise<string[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: "array" });
 
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return [];
 
-  // 🧠 Primera hoja
-  const worksheet = workbook.worksheets[0];
-
-  if (!worksheet) return [];
+  const sheet = workbook.Sheets[sheetName];
+  const rows: any[][] = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: "",
+  });
 
   const skus: string[] = [];
 
-  // 🧠 Desde fila 2 (A2 hacia abajo)
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return; // saltar encabezado
+  for (let i = 1; i < rows.length; i++) {
+    const sku = String(rows[i][0] ?? "").trim();
+    if (sku) skus.push(sku);
+  }
 
-    const cellValue = row.getCell(1).value; // columna A
-
-    if (cellValue) {
-      skus.push(String(cellValue).trim());
-    }
-  });
-
-  return skus.filter(Boolean);
-};
+  return skus;
+}
