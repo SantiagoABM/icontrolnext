@@ -19,6 +19,9 @@ import {
   Flex,
   Table,
   Tabs,
+  TextInput,
+  Modal,
+  Button,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useState, useMemo } from "react";
@@ -69,6 +72,11 @@ export default function HomeComponent() {
   const [detalles, setDetalles] = useState<Detalle[]>([]);
   const [tipoMercaderia, setTipoMercaderia] =
     useState<"MS" | "CT" | null>(null);
+  const [openExportModal, setOpenExportModal] = useState(false);
+
+  const [empresaTransporte, setEmpresaTransporte] = useState("");
+  const [conductor, setConductor] = useState("");
+  const [fechaRecepcion, setFechaRecepcion] = useState(""); // dd/mm/yy
 
   const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
   const [subDptos, setSubDptos] = useState<string[]>([]);
@@ -79,6 +87,11 @@ export default function HomeComponent() {
   const [selectedSubDpto, setSelectedSubDpto] = useState<string | null>(null);
 
   /* ===================== CARGA INICIAL ===================== */
+  type ExportParams = {
+    empresaTransporte: string;
+    conductor: string;
+    fechaRecepcion: string; // dd/mm/yy
+  };
 
 
   useEffect(() => {
@@ -86,10 +99,11 @@ export default function HomeComponent() {
       titulo: "Dashboard",
       buttons: [
         {
-          Texto: "Exportar excel",
+          Texto: "Exportar Excel",
           icon: IconFileExport,
-          action: () => exportarExcelTIM(),
-        },
+          action: () => setOpenExportModal(true),
+        }
+        ,
         {
           Texto: "Exportar PDF",
           icon: IconFileExport,
@@ -185,12 +199,8 @@ export default function HomeComponent() {
     setSubDptosMS(lista);
   };
 
-  /*Funcion exportar excel*/
-  const exportarExcelTIM = async () => {
-    console.log("EXPORTANDO TIM:", selectedTim?.tim);
-    console.log("DETALLES TIM:", detalles[0]?.tim);
 
-    console.log(selectedTim);
+  const exportarExcelTIM = async () => {
     if (!selectedTim?.tim) {
       notifications.show({
         title: "Atención",
@@ -199,11 +209,32 @@ export default function HomeComponent() {
       });
       return;
     }
+    // ===============================
+    // PARSEO ORIGEN / DESTINO
+    // ===============================
+
+    // ORIGEN → "655   CD Secos Huachipa Template"
+    const origenRaw = selectedTim.origen ?? "";
+    const origenParts = origenRaw.trim().split(/\s+/);
+
+    const codigoOrigen = origenParts.length > 0 ? origenParts[0] : "";
+
+    // 👉 SOLO "CD Secos"
+    const movilOrigen =
+      origenRaw.includes("CD Secos") ? "CD Secos" : "";
+
+    // DESTINO → "352  -  Pacasmayo"
+    const destinoRaw = selectedTim.destino ?? "";
+    const destinoParts = destinoRaw.split(/\s*-\s*/);
+
+    const codigoTienda = destinoParts.length > 0 ? destinoParts[0].trim() : "";
+    const tiendaDestino =
+      destinoParts.length > 1 ? destinoParts[1].trim() : "";
 
     const workbook = new ExcelJS.Workbook();
 
     /* ===============================
-       HOJA 1 — RESUMEN TIM (MS)
+       HOJA 1 — RESUMEN TIM
     =============================== */
     const sheetResumen = workbook.addWorksheet("Resumen TIM");
 
@@ -211,6 +242,7 @@ export default function HomeComponent() {
       ["TIM", selectedTim.tim],
       ["Origen", selectedTim.origen],
       ["Fecha Envío", formatDate(selectedTim.fechaEnvio)],
+      ["Fecha Recepción", fechaRecepcion],
       [],
       ["Total Productos", totalDetalles],
       ["Faltantes", totalFaltantes],
@@ -218,57 +250,78 @@ export default function HomeComponent() {
       ["Monto Faltante", montoTotalFaltante],
       ["Monto Sobrante", montoTotalSobrantes],
       ["Avance (%)", Number(avance.toFixed(2))],
-      [],
-      ["FALTANTES - SENSIBLE CENTRAL"],
-      ["Subdepartamento", "Cantidad"],
     ]);
 
-    // 👉 Faltantes Mercadería Sensible
-    const faltantesMS: Record<string, number> = {};
-
-    detallesFiltrados
-      .filter(d => d.marcaSensible && d.uRecibidas < d.uEnviadas)
-      .forEach(d => {
-        const key = d.subdpto ?? "SIN_SUBDPTO";
-        faltantesMS[key] = (faltantesMS[key] || 0) + 1;
-      });
-
-    Object.entries(faltantesMS).forEach(([code, value]) => {
-      const desc =
-        SUBDEPARTAMENTOS.find(s => s.codigo === code)?.descripcion ?? "";
-      sheetResumen.addRow([`${code} - ${desc}`, value]);
-    });
-
-    sheetResumen.columns.forEach(col => (col.width = 30));
+    sheetResumen.columns.forEach(col => (col.width = 32));
 
     /* ===============================
-       HOJA 2 — FALTANTES
+       HOJA 2 — FALTANTES (RMF)
     =============================== */
     const sheetFaltantes = workbook.addWorksheet("Faltantes");
 
     sheetFaltantes.columns = [
-      { header: "Subdepartamento", key: "subdpto", width: 20 },
-      { header: "Descripción", key: "descripcion", width: 40 },
-      { header: "Enviadas", key: "uEnviadas", width: 12 },
-      { header: "Recibidas", key: "uRecibidas", width: 12 },
-      { header: "Faltantes", key: "faltantes", width: 12 },
-      { header: "Costo Unit.", key: "costo", width: 14 },
-      { header: "Monto", key: "monto", width: 14 },
-      { header: "Sensible Central", key: "ms", width: 14 },
+      { header: "FECHA ENVÍO", width: 15 },
+      { header: "FECHA RECEPCIÓN", width: 18 },
+      { header: "CÓDIGO DE TIENDA", width: 18 },
+      { header: "TIENDA", width: 22 },
+      { header: "ORIGEN", width: 18 },
+      { header: "MÓVIL", width: 14 },
+      { header: "EMPRESA DE TRANSPORTE", width: 26 },
+      { header: "CONDUCTOR", width: 22 },
+      { header: "ASUNTO", width: 22 },
+      { header: "TIM", width: 14 },
+      { header: "OLPN", width: 16 },
+      { header: "DEPARTAMENTO", width: 16 },
+      { header: "SKU", width: 16 },
+      { header: "EAN", width: 18 },
+      { header: "DESCRIPCIÓN DE SKU", width: 40 },
+      { header: "UNIDAD DE MEDIDA", width: 18 },
+      { header: "CANTIDAD EN GUIA", width: 20 },
+      { header: "CANTIDAD RECIBIDA", width: 22 },
+      { header: "DIFERENCIA", width: 14 },
+      { header: "COSTO PROMEDIO", width: 18 },
+      { header: "MONTO FALTANTE (S/)", width: 22 },
+      { header: "RESPONSABLE", width: 20 },
+      { header: "RESOLUCIÓN", width: 20 },
+      { header: "MARCA SENSIBLE", width: 18 },
     ];
 
     faltantes.forEach(d => {
-      const unidades = d.uEnviadas - d.uRecibidas;
-      sheetFaltantes.addRow({
-        subdpto: d.subdpto,
-        descripcion: d.descripcion,
-        uEnviadas: d.uEnviadas,
-        uRecibidas: d.uRecibidas,
-        faltantes: unidades,
-        costo: d.costoPromedio ?? 0,
-        monto: unidades * (d.costoPromedio ?? 0),
-        ms: d.marcaSensible ? "SI" : "NO",
-      });
+      const diferencia = d.uEnviadas - d.uRecibidas;
+      const costo = d.costoPromedio ?? 0;
+      const montoFaltante = diferencia * costo;
+      const asunto = `DISCREPANCIA_${fechaRecepcion}_${movilOrigen}_TIM_${selectedTim.tim} ${codigoTienda}_${tiendaDestino}`;
+
+      let marca = "-";
+      if (d.marcaSensible) marca = "C";
+      else if (d.isContable) marca = "T";
+
+      sheetFaltantes.addRow([
+        formatDate(selectedTim.fechaEnvio),
+        fechaRecepcion,
+        codigoTienda,
+        tiendaDestino,
+        codigoOrigen,
+        movilOrigen,
+        empresaTransporte,
+        conductor,
+        asunto ?? "",
+        selectedTim.tim,
+        d.olpn ?? "",
+        d.subdpto?.substring(0, 3) ?? "",
+        d.sku,
+        d.ean ?? "",
+        d.descripcion,
+        d.uMedida ?? "",
+        d.uEnviadas,
+        d.uRecibidas,
+        diferencia,
+        costo,
+        montoFaltante,
+        d.modificadoPor ?? "",
+        "PENDIENTE",
+        marca,
+      ]);
     });
 
     /* ===============================
@@ -277,28 +330,46 @@ export default function HomeComponent() {
     const sheetSobrantes = workbook.addWorksheet("Sobrantes");
 
     sheetSobrantes.columns = [
-      { header: "Subdepartamento", key: "subdpto", width: 20 },
-      { header: "Descripción", key: "descripcion", width: 40 },
-      { header: "Enviadas", key: "uEnviadas", width: 12 },
-      { header: "Recibidas", key: "uRecibidas", width: 12 },
-      { header: "Sobrantes", key: "sobrantes", width: 12 },
-      { header: "Costo Unit.", key: "costo", width: 14 },
-      { header: "Monto", key: "monto", width: 14 },
-      { header: "Sensible Central", key: "ms", width: 14 },
+      { header: "FECHA ENVÍO", width: 15 },
+      { header: "FECHA RECEPCIÓN", width: 18 },
+      { header: "TIM", width: 14 },
+      { header: "SKU", width: 16 },
+      { header: "DESCRIPCIÓN", width: 40 },
+      { header: "SUBDPTO", width: 14 },
+      { header: "CAJAS ENVIADAS", width: 16 },
+      { header: "UNIDADES ENVIADAS", width: 18 },
+      { header: "CAJAS RECIBIDAS", width: 18 },
+      { header: "UNIDADES RECIBIDAS", width: 20 },
+      { header: "SOBRANTE", width: 14 },
+      { header: "COSTO PROMEDIO", width: 18 },
+      { header: "TOTAL SOBRANTE", width: 18 },
+      { header: "MARCA SENSIBLE", width: 16 },
     ];
 
     sobrantes.forEach(d => {
-      const unidades = d.uRecibidas - d.uEnviadas;
-      sheetSobrantes.addRow({
-        subdpto: d.subdpto,
-        descripcion: d.descripcion,
-        uEnviadas: d.uEnviadas,
-        uRecibidas: d.uRecibidas,
-        sobrantes: unidades,
-        costo: d.costoPromedio ?? 0,
-        monto: unidades * (d.costoPromedio ?? 0),
-        ms: d.marcaSensible ? "SI" : "NO",
-      });
+      const sobrante = d.uRecibidas - d.uEnviadas;
+      const costo = d.costoPromedio ?? 0;
+
+      let marca = "-";
+      if (d.marcaSensible) marca = "C";
+      else if (d.isContable) marca = "T";
+
+      sheetSobrantes.addRow([
+        formatDate(selectedTim.fechaEnvio),
+        fechaRecepcion,
+        selectedTim.tim,
+        d.sku,
+        d.descripcion,
+        d.subdpto,
+        d.casePack ? d.uEnviadas / d.casePack : 0,
+        d.uEnviadas,
+        d.casePack ? d.uRecibidas / d.casePack : 0,
+        d.uRecibidas,
+        sobrante,
+        costo,
+        sobrante * costo,
+        marca,
+      ]);
     });
 
     /* ===============================
@@ -308,10 +379,9 @@ export default function HomeComponent() {
 
     saveAs(
       new Blob([buffer], {
-        type:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       }),
-      `TIM_${selectedTim.tim}_resultado.xlsx`
+      `BITACORA_TIM_${selectedTim.tim}.xlsx`
     );
   };
 
@@ -1034,6 +1104,59 @@ export default function HomeComponent() {
           </div>
         </>
       )}
+      <>
+        <Modal
+          opened={openExportModal}
+          onClose={() => setOpenExportModal(false)}
+          title="Datos para Exportar Excel"
+        >
+          <TextInput
+            label="Empresa de Transporte"
+            value={empresaTransporte}
+            onChange={(e) => setEmpresaTransporte(e.currentTarget.value)}
+            required
+          />
+
+          <TextInput
+            mt="sm"
+            label="Conductor"
+            value={conductor}
+            onChange={(e) => setConductor(e.currentTarget.value)}
+            required
+          />
+
+          <TextInput
+            mt="sm"
+            label="Fecha Recepción (dd/mm/yy)"
+            placeholder="ej: 14/01/26"
+            value={fechaRecepcion}
+            onChange={(e) => setFechaRecepcion(e.currentTarget.value)}
+            required
+          />
+
+          <Button
+            fullWidth
+            mt="md"
+            onClick={() => {
+              if (!empresaTransporte || !conductor || !fechaRecepcion) {
+                notifications.show({
+                  title: "Campos requeridos",
+                  message: "Complete todos los datos",
+                  color: "red",
+                });
+                return;
+              }
+
+              setOpenExportModal(false);
+              exportarExcelTIM();
+            }}
+          >
+            Exportar Excel
+          </Button>
+        </Modal>
+
+      </>
     </div>
+
   );
 }

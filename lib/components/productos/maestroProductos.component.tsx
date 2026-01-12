@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   Modal,
   Text,
 } from "@mantine/core";
@@ -48,12 +49,14 @@ export default function ProductosComponent() {
   /* ===================== STATES ===================== */
   const [vista, setVista] = useState<"LISTA" | "FLAGS">("LISTA");
   const [refreshTable, setRefreshTable] = useState(false);
+  const [sensibleTienda, setSensibleTienda] = useState(false);
+  const [sensibleCentral, setSensibleCentral] = useState(false);
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [respaldoFiltros, setRespaldoFiltros] =
     useState<ProductoFilter | null>(null);
-    const { userData } = useUserDataStore();
+  const { userData } = useUserDataStore();
 
   const [openForm, setOpenForm] = useState<{
     open: boolean;
@@ -170,6 +173,24 @@ export default function ProductosComponent() {
       ),
     },
   ];
+  const toggleSensibleTienda = (checked: boolean) => {
+    setSensibleTienda(checked);
+
+    // ❌ Si tienda se desmarca, central también
+    if (!checked) {
+      setSensibleCentral(false);
+    }
+  };
+
+  const toggleSensibleCentral = (checked: boolean) => {
+    setSensibleCentral(checked);
+
+    // ✅ Si central se marca, tienda se marca
+    if (checked) {
+      setSensibleTienda(true);
+    }
+  };
+
 
   /* ===================== HANDLERS ===================== */
   const handleSave = async (data: Partial<Producto>) => {
@@ -213,7 +234,7 @@ export default function ProductosComponent() {
         return;
       }
 
-      const result = await importarSkusAction(skus);
+      const result = await importarSkusAction(skus, sensibleCentral, sensibleTienda);
 
       notifications.show({
         title: "Importación",
@@ -269,6 +290,23 @@ export default function ProductosComponent() {
           file={fileSkus}
           onChange={setFileSkus}
           title="Se tomará solo los sku desde A2 hacia abajo"
+        />
+        <Checkbox
+          mt="md"
+          label="Sensible Tienda"
+          checked={sensibleTienda}
+          onChange={(e) =>
+            toggleSensibleTienda(e.currentTarget.checked)
+          }
+        />
+
+        <Checkbox
+          mt="xs"
+          label="Sensible Central"
+          checked={sensibleCentral}
+          onChange={(e) =>
+            toggleSensibleCentral(e.currentTarget.checked)
+          }
         />
 
         <Button fullWidth mt="md" onClick={importarSkus}>

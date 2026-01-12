@@ -283,7 +283,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
         const parrafoIntro = `
 En el distrito de Pacasmayo, provincia de Pacasmayo del día ${dia} de ${mes} del ${anio}, 
 suscriben la siguiente acta; de parte de ${empresa} con RUC N° ${RUC} (donante) y de la otra 
-parte el Sr(a) ____________________________________, C.E. ______________________ como 
+parte el Sr(a) ____________________________________, D.I. ______________________ como 
 representante del comedor ${donatario} (donatario), para proceder con la entrega (donación) 
 de los bienes detallados líneas abajo; los cuales serán destinados a obras sociales de la 
 entidad beneficiada.`.trim();

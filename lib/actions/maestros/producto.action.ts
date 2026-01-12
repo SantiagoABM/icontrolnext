@@ -298,7 +298,9 @@ export const getFlagsSubdptoAction = async (
     }
 };
 export const importarSkusAction = async (
-    skus: string[]
+    skus: string[],
+    marcaSensible: boolean,
+    isContable: boolean
 ): Promise<RespuestaApi<any>> => {
     try {
         // 🔐 Validar sesión
@@ -318,6 +320,8 @@ export const importarSkusAction = async (
             endpoint: `${process.env.NEXT_PUBLIC_API_IMPORTAR_SKUS}`,
             body: {
                 skus,
+                marcaSensible,
+                isContable
             },
         });
 

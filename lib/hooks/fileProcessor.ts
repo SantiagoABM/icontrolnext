@@ -145,8 +145,8 @@ export async function processExcelReportFront(
         !isNaN(valorK) && valorK > 0
           ? valorK
           : !isNaN(valorI)
-          ? valorI
-          : 0;
+            ? valorI
+            : 0;
 
       const detalle: Detalle = {
         _id: "",
@@ -235,10 +235,13 @@ export async function leerSkusDesdeArchivo(file: File): Promise<string[]> {
 
   const skus: string[] = [];
 
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = 0; i < rows.length; i++) {
     const sku = String(rows[i][0] ?? "").trim();
-    if (sku) skus.push(sku);
+    if (sku && sku !== "SKU") {
+      skus.push(sku);
+    }
   }
+
 
   return skus;
 }
