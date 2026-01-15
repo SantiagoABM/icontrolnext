@@ -26,8 +26,17 @@ export function base64ATexto<T>(base64: string) {
   const text = new TextDecoder().decode(bytes);
   return text;
 }
-export const formatDate = (date: any) => {
-  if (!date) return "";
-  const d = new Date(date);
+export function formatDate(date?: string | null): string {
+  if (!date || typeof date !== "string") return "";
+
+  // Normalizar espacios
+  const clean = date.trim();
+  if (!clean) return "";
+
+  const d = new Date(clean);
+
+  // ⛔ FECHA INVÁLIDA
+  if (isNaN(d.getTime())) return "";
+
   return d.toISOString().split("T")[0];
-};
+}

@@ -129,11 +129,14 @@ export default function HomeComponent() {
 
   };
 
-  const ROLES_PERMITIDOS = ["administrador", "supervisor", "operador"];
+  if (!userData) {
+    return null; // o <LoadingOverlay visible />
+  }
 
-  // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
+  const ROLES_PERMITIDOS = ["administrador", "supervisor", "operador"];
   const tieneAcceso = validarRolUsuario(userData, ROLES_PERMITIDOS);
 
+  // ⛔ USUARIO SIN PERMISOS
   if (!tieneAcceso) {
     return <UnAuthoriceComponent />;
   }
