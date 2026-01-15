@@ -26,7 +26,7 @@ export function base64ATexto<T>(base64: string) {
   const text = new TextDecoder().decode(bytes);
   return text;
 }
-export function formatDate(date?: string | null): string {
+export function formatDate(date?: String | null): string {
   if (!date || typeof date !== "string") return "";
 
   // Normalizar espacios
