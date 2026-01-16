@@ -23,6 +23,7 @@ import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { formatDate } from "@/lib/hooks/helpers";
 import { IconFile, IconRefresh } from "@tabler/icons-react";
 
+type TipoSensible = "TIENDA" | "CENTRAL" | null;
 
 export interface DetallesModalProps {
     opened?: boolean;
@@ -42,7 +43,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     /* ===================== FILTROS ===================== */
     const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
     const [selectedSubDpto, setSelectedSubDpto] = useState<string | null>(null);
-    const [selectedSubDptoMS, setSelectedSubDptoMS] = useState<string | null>(null);
+    const [tipoSensible, setTipoSensible] = useState<TipoSensible>(null);
 
     /* ===================== CARGA ÚNICA ===================== */
     useEffect(() => {
@@ -58,6 +59,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
 
         cargar();
     }, [opened, initialData?.tim]);
+    
     const recargarDatos = async () => {
         if (!initialData?.tim) return;
 
@@ -205,39 +207,45 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     const rowsFiltrados = useMemo(() => {
         let data = [...rowsOriginales];
 
-        // 🟢 MERCADERÍA SENSIBLE
-        if (selectedSubDptoMS) {
-            data = data.filter((d) => d.marcaSensible === true);
-
-            if (selectedSubDptoMS !== "TODOS") {
-                data = data.filter((d) => d.subdpto === selectedSubDptoMS);
-            }
+        // 🟡 FILTRO DEPARTAMENTO
+        if (selectedDepartamento) {
+            data = data.filter((d) =>
+                d.subdpto?.startsWith(selectedDepartamento)
+            );
         }
-        // 🟡 DEPARTAMENTO / SUBDEPTO
-        else {
-            if (selectedDepartamento) {
-                data = data.filter((d) =>
-                    d.subdpto?.startsWith(selectedDepartamento)
-                );
-            }
 
-            if (selectedSubDpto) {
-                data = data.filter((d) => d.subdpto === selectedSubDpto);
-            }
+        // 🟡 FILTRO SUBDEPTO
+        if (selectedSubDpto) {
+            data = data.filter((d) => d.subdpto === selectedSubDpto);
+        }
+
+        // 🔵 FILTRO MERCADERÍA SENSIBLE
+        if (tipoSensible === "TIENDA") {
+            data = data.filter((d) => d.isContable === true);
+        }
+
+        if (tipoSensible === "CENTRAL") {
+            data = data.filter((d) => d.marcaSensible === true);
         }
 
         return data;
-    }, [rowsOriginales, selectedDepartamento, selectedSubDpto, selectedSubDptoMS]);
+    }, [
+        rowsOriginales,
+        selectedDepartamento,
+        selectedSubDpto,
+        tipoSensible,
+    ]);
+
 
     /* ===================== HELPERS ===================== */
     const limpiarFiltros = () => {
         setSelectedDepartamento(null);
         setSelectedSubDpto(null);
-        setSelectedSubDptoMS(null);
+        setTipoSensible(null);
     };
 
+
     const disableMS = Boolean(selectedDepartamento || selectedSubDpto);
-    const disableDept = Boolean(selectedSubDptoMS);
 
     const titleHead: TitleHead = {
         title: `Detalles del Reporte #${initialData?.tim ?? ""}`,
@@ -508,7 +516,6 @@ entidad beneficiada.`.trim();
                         label="Departamento"
                         placeholder="Seleccione..."
                         style={{ width: 260 }}
-                        disabled={disableDept}
                         searchable
                         clearable
                         value={selectedDepartamento}
@@ -524,7 +531,6 @@ entidad beneficiada.`.trim();
                         onChange={(v) => {
                             setSelectedDepartamento(v);
                             setSelectedSubDpto(null);
-                            setSelectedSubDptoMS(null);
                         }}
                     />
 
@@ -532,7 +538,7 @@ entidad beneficiada.`.trim();
                         label="Subdepartamento"
                         placeholder="Seleccione..."
                         style={{ width: 280 }}
-                        disabled={!selectedDepartamento || disableDept}
+                        disabled={!selectedDepartamento}
                         searchable
                         clearable
                         value={selectedSubDpto}
@@ -547,32 +553,23 @@ entidad beneficiada.`.trim();
                             }))}
                         onChange={(v) => {
                             setSelectedSubDpto(v);
-                            setSelectedSubDptoMS(null);
                         }}
                     />
 
                     <Select
                         label="Mercadería Sensible"
-                        placeholder="Seleccione..."
+                        placeholder="Todos"
                         style={{ width: 300 }}
-                        disabled={disableMS}
                         searchable
                         clearable
-                        value={selectedSubDptoMS}
+                        value={tipoSensible}
                         data={[
-                            { value: "TODOS", label: "TODOS (solo sensibles)" },
-                            ...subDptosMS.map((s) => ({
-                                value: s,
-                                label: `${s} - ${SUBDEPARTAMENTOS.find((d) => d.codigo === s)?.descripcion ?? ""
-                                    }`,
-                            })),
+                            { value: "TIENDA", label: "Sensible Tienda" },
+                            { value: "CENTRAL", label: "Sensible Central" },
                         ]}
-                        onChange={(v) => {
-                            setSelectedSubDptoMS(v);
-                            setSelectedDepartamento(null);
-                            setSelectedSubDpto(null);
-                        }}
+                        onChange={(v) => setTipoSensible(v as TipoSensible)}
                     />
+
 
                     <button
                         onClick={limpiarFiltros}

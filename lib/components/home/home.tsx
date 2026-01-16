@@ -112,6 +112,20 @@ export default function HomeComponent() {
       ]
     });
   }, [selectedTim, detalles]);
+  useEffect(() => {
+    if (!selectedTim?.tim) return;
+
+    console.log("🟢 Iniciando polling TIM:", selectedTim.tim);
+
+    const interval = setInterval(() => {
+      fetchDetalleSilencioso();
+    }, 20000); // ⏱️ 5 segundos
+
+    return () => {
+      console.log("🧹 Deteniendo polling");
+      clearInterval(interval);
+    };
+  }, [selectedTim?.tim]);
 
   const fetchReportes = async () => {
     show();
@@ -164,6 +178,25 @@ export default function HomeComponent() {
     setSelectedSubDpto(null);
     hide();
 
+  };
+  const fetchDetalleSilencioso = async () => {
+    if (!selectedTim?.tim) return;
+
+    try {
+      console.log("🔄 Polling TIM:", selectedTim.tim);
+
+      const response = await getDetalleReporteByTim(selectedTim.tim);
+
+      if (!response.success) return;
+
+      setDetalles(response.datos);
+
+      // 🔹 NO tocar filtros
+      procesarSubDptos(response.datos);
+      procesarSubDptosMS(response.datos);
+    } catch (e) {
+      console.error("❌ Error polling:", e);
+    }
   };
 
   useEffect(() => {
