@@ -60,11 +60,11 @@ export default function ApkDownloadCard() {
           {/* ✅ GRID RESPONSIVE REAL */}
           <Grid w="100%" mt="md">
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Versión" value="1.0.0" />
+              <Info label="Versión" value="2.0.0" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Compilado" value="08/01/2026" />
+              <Info label="Compilado" value="19/01/2026" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>
