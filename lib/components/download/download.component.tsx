@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import { IconDownload, IconDeviceMobile } from "@tabler/icons-react";
 
-const APK_PATH = "/apk/control_verde.apk";
+const APK_PATH = "/apk/icontrol.apk";
 
 export default function ApkDownloadCard() {
   const [size, setSize] = useState("Calculando...");
