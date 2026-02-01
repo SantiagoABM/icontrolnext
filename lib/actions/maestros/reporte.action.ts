@@ -102,3 +102,36 @@ export const CreateReporte = async (
         };
     }
 }
+export const reactivarTim = async (
+    tim: number
+): Promise<RespuestaApi<any>> => {
+    try {
+        // 🔐 Validar sesión
+        const datosSesion = await ObtenerSesion();
+
+        if (!datosSesion) {
+            return {
+                success: false,
+                mensaje: "No hay sesión activa",
+                datos: null,
+                sesion: false,
+            };
+        }
+
+        // 🚀 Llamada al backend
+        const result = await peticionGET({
+            endpoint: `${process.env.NEXT_PUBLIC_API_REACTIVAR_TIM}/${tim}`,
+        });
+
+        return result;
+    } catch (error) {
+        redirect("/auth");
+
+        return {
+            success: false,
+            mensaje: "Error al actualizar flags por subdepartamento",
+            datos: null,
+            sesion: false,
+        };
+    }
+};

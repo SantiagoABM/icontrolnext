@@ -9,10 +9,10 @@ export function middleware(req: NextRequest) {
   const isProtectedPage = req.nextUrl.pathname.startsWith("/home")
 
   if (!session && isProtectedPage) {
-    return NextResponse.redirect(new URL(`${urlBase}/auth`, req.url));
+    return NextResponse.redirect(new URL(`/auth`, req.url));
   }
   if (session && isAuthPage) {
-      return NextResponse.redirect(new URL(`${urlBase}/home`, req.url));
+      return NextResponse.redirect(new URL(`/home`, req.url));
   }
  
   return NextResponse.next();

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Select, Flex, Text, Badge, Tooltip, ActionIcon } from "@mantine/core";
+import { Select, Flex, Text, Badge, Tooltip, ActionIcon, Button } from "@mantine/core";
 import ModalCustomComponent, { TitleHead } from "../../common/modalCustom.component";
 import { Detalle, Reporte } from "@/lib/interfaces/maestros/reportes.interface";
 import ResponsiveDataTable, { Column } from "../../common/responsiveTable.component";
@@ -22,6 +22,10 @@ import { saveAs } from "file-saver";
 import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { formatDate } from "@/lib/hooks/helpers";
 import { IconFile, IconRefresh } from "@tabler/icons-react";
+import { reactivarTim } from "@/lib/actions/maestros/reporte.action";
+import { notifications } from "@mantine/notifications";
+import Router from "next/router";
+import { useUserDataStore } from "@/lib/store/useUserDataStore";
 
 type TipoSensible = "TIENDA" | "CENTRAL" | null;
 
@@ -39,7 +43,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     /* ===================== DATA ===================== */
     const [rowsOriginales, setRowsOriginales] = useState<Detalle[]>([]);
     const { show, hide } = useLoadingStore();
-
+    const { userData } = useUserDataStore();
     /* ===================== FILTROS ===================== */
     const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
     const [selectedSubDpto, setSelectedSubDpto] = useState<string | null>(null);
@@ -59,7 +63,19 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
 
         cargar();
     }, [opened, initialData?.tim]);
-    
+
+    const activarTim = async () => {
+        if (!initialData?.tim) return;
+        show();
+        const resp = await reactivarTim(initialData.tim);
+        notifications.show({
+            title: resp.success ? "Éxito" : "Error",
+            message: resp.mensaje,
+            color: resp.success ? "green" : "red",
+        });
+        window.location.reload();
+        hide();
+    }
     const recargarDatos = async () => {
         if (!initialData?.tim) return;
 
@@ -610,8 +626,19 @@ entidad beneficiada.`.trim();
                             <IconRefresh size={20} />
                         </ActionIcon>
                     </Tooltip>
-
+                    {initialData?.estado == false && (userData?.rol === "administrador" || userData?.rol === "supervisor") && (
+                        <button style={{
+                            padding: "8px 16px",
+                            background: "#E0EE22",
+                            color: "white",
+                            borderRadius: 8,
+                            border: "none",
+                            cursor: "pointer",
+                            height: 40,
+                        }} onClick={activarTim}>Activar Reporte</button>
+                    )}
                 </Flex>
+
 
                 {/* ===================== TABLA ===================== */}
                 {rowsFiltrados.length === 0 ? (
