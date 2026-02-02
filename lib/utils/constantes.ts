@@ -67,7 +67,7 @@ export const menuItemsMock: MenuItem[] = [
         nombre: "Dashboard",
         url: "/home",
         orden: "1",
-        rolesPermitidos: ["administrador", "supervisor", "operador"],
+        rolesPermitidos: ["administrador", "supervisor"],
         icono: "IconHome",
     },
     {
