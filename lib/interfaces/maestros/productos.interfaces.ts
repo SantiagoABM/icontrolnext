@@ -10,6 +10,7 @@ export interface Producto {
     costoPromedio: number | null
     precioVigente: number | null
     uMedida: string | null
+    precioInv: number | null
     marcaSensible: boolean | false
     isContable: boolean | false
     createdAt: string | null

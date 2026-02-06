@@ -234,6 +234,24 @@ export default function HomeComponent() {
     );
     setSubDptosMS(lista);
   };
+  const detallesMsTienda = detalles.filter(
+    d => d.isContable === true
+  );
+
+  const totalEnviadasMs = detallesMsTienda.reduce(
+    (s, d) => s + d.uEnviadas,
+    0
+  );
+
+  const totalRecibidasMs = detallesMsTienda.reduce(
+    (s, d) => s + d.uRecibidas,
+    0
+  );
+
+  const porcentajeMsTienda =
+    totalEnviadasMs > 0
+      ? (totalRecibidasMs / totalEnviadasMs) * 100
+      : 0;
 
 
   const exportarExcelTIM = async () => {
@@ -250,6 +268,17 @@ export default function HomeComponent() {
     // ===============================
 
     // ORIGEN → "655   CD Secos Huachipa Template"
+    const now = new Date();
+    const fechaGeneracion = now.toLocaleString("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+
     const origenRaw = selectedTim.origen ?? "";
     const origenParts = origenRaw.trim().split(/\s+/);
 
@@ -273,19 +302,23 @@ export default function HomeComponent() {
        HOJA 1 — RESUMEN TIM
     =============================== */
     const sheetResumen = workbook.addWorksheet("Resumen TIM");
+    var diferenciaUnidades = totalFaltantes + totalSobrantes;
+    var diferenciaMonto = montoTotalSobrantes - montoTotalFaltante;
 
     sheetResumen.addRows([
+      ["Fecha Generación", fechaGeneracion],
       ["TIM", selectedTim.tim],
       ["Origen", selectedTim.origen],
       ["Fecha Envío", formatDate(selectedTim.fechaEnvio)],
       ["Fecha Recepción", fechaRecepcion],
       [],
-      ["Total Productos", totalDetalles],
-      ["Faltantes", totalFaltantes],
-      ["Sobrantes", totalSobrantes],
-      ["Monto Faltante", montoTotalFaltante],
-      ["Monto Sobrante", montoTotalSobrantes],
-      ["Avance (%)", Number(avance.toFixed(2))],
+      ["", "Unidades", "Monto (S/)"],
+      ["Faltantes", totalFaltantes, montoTotalFaltante],
+      ["Sobrantes", totalSobrantes, montoTotalSobrantes],
+      ["Diferencia", diferenciaUnidades, diferenciaMonto],
+      [],
+      ["%Validación MS", Number(porcentajeMsTienda.toFixed(2))],
+      ["%Validación Móvil", Number(avance.toFixed(2))],
     ]);
 
     sheetResumen.columns.forEach(col => (col.width = 32));
@@ -423,8 +456,6 @@ export default function HomeComponent() {
     );
   };
 
-
-
   /* ============ FILTRAR SUBDPTOS POR DEPARTAMENTO ============ */
 
   useEffect(() => {
@@ -494,6 +525,7 @@ export default function HomeComponent() {
   const sobrantes = detallesFiltrados.filter(
     (d) => d.uRecibidas > d.uEnviadas
   );
+  const msPorcentaje = detalles.filter(d => d.isContable).length > 0
 
   const totalFaltantes = faltantes.length;
   const totalSobrantes = sobrantes.length;
@@ -537,11 +569,17 @@ export default function HomeComponent() {
 
   const criticos = criticosBase
     .slice()
-    .sort(
-      (a, b) =>
-        (b.costoPromedio ?? 0) - (a.costoPromedio ?? 0)
-    )
+    .sort((a, b) => {
+      const totalB =
+        (b.costoPromedio ?? 0) * ((b.uRecibidas ?? 0) - (b.uEnviadas ?? 0));
+
+      const totalA =
+        (a.costoPromedio ?? 0) * ((a.uRecibidas ?? 0) - (a.uEnviadas ?? 0));
+
+      return totalA - totalB;
+    })
     .slice(0, limiteCriticos);
+
 
   const sobrantesOrdenados = sobrantes
     .slice()

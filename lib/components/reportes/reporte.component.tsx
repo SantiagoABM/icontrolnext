@@ -27,6 +27,7 @@ import { useUserDataStore } from "@/lib/store/useUserDataStore";
 import { validarRolUsuario } from "@/lib/hooks/verificarRol";
 import UnAuthoriceComponent from "../common/unauthorice.component";
 
+
 export default function ReporteComponent() {
     const { show, hide } = useLoadingStore();
     const { setData } = useTitlePageStore();
@@ -37,6 +38,7 @@ export default function ReporteComponent() {
     const { userData } = useUserDataStore();
     const [reportes, setReportes] = useState<Reporte[]>([]);
     const [totalRows, setTotalRows] = useState(0);
+
 
     const [respaldoFiltros, setRespaldoFiltros] =
         useState<ReporteFilter | null>(null);
@@ -68,13 +70,13 @@ export default function ReporteComponent() {
         });
     }, [setData]);
     const ROLES_PERMITIDOS = ["administrador", "supervisor", "operador"];
-    
-        // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
-        const tieneAcceso = validarRolUsuario(userData, ROLES_PERMITIDOS);
-    
-        if (!tieneAcceso) {
-            return <UnAuthoriceComponent />;
-        }
+
+    // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
+    const tieneAcceso = validarRolUsuario(userData, ROLES_PERMITIDOS);
+
+    if (!tieneAcceso) {
+        return <UnAuthoriceComponent />;
+    }
 
     // ============================
     // COLUMNAS

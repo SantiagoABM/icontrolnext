@@ -338,3 +338,39 @@ export const importarSkusAction = async (
     }
 };
 
+export const uploadProductosLote = async (
+    productos: Producto[]
+): Promise<RespuestaApi<any>> => {
+    try {
+        const datosSesion = await ObtenerSesion();
+
+        if (!datosSesion) {
+            return {
+                success: false,
+                mensaje: "No hay sesión activa",
+                datos: null,
+                sesion: false,
+            };
+        }
+        // console.log('Productos a subir en lote:', productos);
+        // return {
+        //     success: true,
+        //     mensaje: "Lote de productos procesado correctamente (simulado)",
+        //     datos: null
+        // };
+        const result = await peticionPOST({
+            endpoint: `${process.env.NEXT_PUBLIC_API_ADD_PRODUCTO_LOTE}`,
+            body: productos,
+        });
+
+        return result;
+    } catch (error) {
+        redirect("/auth");
+        return {
+            success: false,
+            mensaje: "Error al subir el lote de productos",
+            datos: null,
+            sesion: false,
+        };
+    }
+};

@@ -83,7 +83,7 @@ export const menuItemsMock: MenuItem[] = [
         nombre: "Reportes",
         url: "/home/maestro/reportes",
         orden: "3",
-        rolesPermitidos: ["administrador", "supervisor","operador"],
+        rolesPermitidos: ["administrador", "supervisor", "operador"],
         icono: "IconClipboardTextFilled",
     },
     {
@@ -96,9 +96,17 @@ export const menuItemsMock: MenuItem[] = [
     },
     {
         idOpcion: "5",
+        nombre: "Bitácora",
+        url: "/home/bitacora",
+        orden: "5",
+        rolesPermitidos: ["administrador"],
+        icono: "IconBook",
+    },
+    {
+        idOpcion: "6",
         nombre: "Aplicación",
         url: "/home/aplicacion",
-        orden: "4",
+        orden: "6",
         rolesPermitidos: ["administrador", "supervisor", "operador"],
         icono: "IconDownload",
     }

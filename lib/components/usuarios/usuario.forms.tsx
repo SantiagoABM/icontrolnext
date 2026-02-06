@@ -136,22 +136,34 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
                     />
                 )}
 
-                {/* DNI */}
-                <TextInput
-                    label="DNI"
-                    withAsterisk
-                    value={formData.dni ?? ""}
-                    error={errors.dni}
-                    onChange={(e) => {
-                        const value = e.currentTarget.value;
-                        const soloNumeros = value.replace(/\D/g, "");
-                        if (soloNumeros.length > 8) return;
-                        handleChange("dni", soloNumeros);
-                    }}
-                />
 
                 {/* Nombre - Apellido */}
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                    {/* DNI */}
+                    <TextInput
+                        label="DNI"
+                        withAsterisk
+                        value={formData.dni ?? ""}
+                        error={errors.dni}
+                        onChange={(e) => {
+                            const value = e.currentTarget.value;
+                            const soloNumeros = value.replace(/\D/g, "");
+                            if (soloNumeros.length > 8) return;
+                            handleChange("dni", soloNumeros);
+                        }}
+                    />
+
+                    <Select
+                        label="Rol"
+                        withAsterisk
+                        placeholder="Seleccionar..."
+                        value={formData.rol || null}
+                        error={errors.rol}
+                        onChange={(val) => handleChange("rol", val)}
+                        data={rolSelect}
+                        searchable
+                        clearable
+                    />
                     <TextInput
                         label="Nombre"
                         withAsterisk
@@ -159,10 +171,7 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
                         error={errors.nombre}
                         onChange={(e) => {
                             const nombre = e.currentTarget.value;
-                            const nuevoCorreo = generarCorreo(nombre, formData.apellido ?? "");
-
                             handleChange("nombre", nombre);
-                            handleChange("correo", nuevoCorreo);
                         }}
                     />
 
@@ -173,35 +182,26 @@ const UsuarioForm: React.FC<UsuarioFormProps> = ({
                         error={errors.apellido}
                         onChange={(e) => {
                             const apellido = e.currentTarget.value;
-                            const nuevoCorreo = generarCorreo(formData.nombre ?? "", apellido);
                             handleChange("apellido", apellido);
-                            handleChange("correo", nuevoCorreo);
                         }}
                     />
 
                 </SimpleGrid>
+                {/* Rol */}
 
                 {/* Correo */}
                 <TextInput
                     label="Correo"
                     withAsterisk
                     value={formData.correo ?? ""}
+                    onChange={(e) => {
+                        const correo = e.currentTarget.value;
+                        handleChange("correo", correo);
+                    }}
                     error={errors.correo}
-                    disabled
                 />
 
-                {/* Rol */}
-                <Select
-                    label="Rol"
-                    withAsterisk
-                    placeholder="Seleccionar..."
-                    value={formData.rol || null}
-                    error={errors.rol}
-                    onChange={(val) => handleChange("rol", val)}
-                    data={rolSelect}
-                    searchable
-                    clearable
-                />
+
             </Stack>
         </ModalCustomComponent>
     );

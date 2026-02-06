@@ -10,7 +10,9 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import ExcelJS from "exceljs";
 import {
+  IconFileDownload,
   IconFileSpreadsheet,
   IconLockSquareRounded,
   IconPlus,
@@ -40,6 +42,8 @@ import { useTitlePageStore } from "@/lib/store/useTitlePageStore";
 import { validarRolUsuario } from "@/lib/hooks/verificarRol";
 import UnAuthoriceComponent from "../common/unauthorice.component";
 import { useUserDataStore } from "@/lib/store/useUserDataStore";
+import { useUploadProductosFile } from "@/lib/hooks/useUploadProductosFile";
+import saveAs from "file-saver";
 
 export default function ProductosComponent() {
   /* ===================== STORES ===================== */
@@ -57,7 +61,11 @@ export default function ProductosComponent() {
   const [respaldoFiltros, setRespaldoFiltros] =
     useState<ProductoFilter | null>(null);
   const { userData } = useUserDataStore();
-
+  const {
+    upload,
+    loading: loadingUpload,
+    processed,
+  } = useUploadProductosFile();
   const [openForm, setOpenForm] = useState<{
     open: boolean;
     data: Producto | null;
@@ -68,11 +76,26 @@ export default function ProductosComponent() {
   const [fileSkus, setFileSkus] = useState<File | null>(null);
   const [skusNoEncontrados, setSkusNoEncontrados] = useState<string[]>([]);
 
+  /* ===== IMPORT PROFUNDIDAD ===== */
+  const [openProfundidadModal, setOpenProfundidadModal] = useState(false);
+  const [fileProfundidad, setFileProfundidad] = useState<File | null>(null);
+  const [profundidadNoEncontrados, setProfundidadNoEncontrados] = useState<string[]>([]);
+
   /* ===================== HEADER ===================== */
   useEffect(() => {
     setData({
       titulo: "Maestro de Productos",
       buttons: [
+        {
+          Texto: "Descargar Plantilla",
+          icon: IconFileDownload,
+          action: descargarPlantillaProductos,
+        },
+        {
+          Texto: "Importar Profundidad",
+          icon: IconFileSpreadsheet,
+          action: () => setOpenProfundidadModal(true),
+        },
         {
           Texto: "Importar SKUS",
           icon: IconFileSpreadsheet,
@@ -125,6 +148,7 @@ export default function ProductosComponent() {
 
     fetch();
   }, [refreshTable]);
+
   const ROLES_PERMITIDOS = ["administrador", "supervisor"];
 
   // ✅ VALIDACIÓN DESPUÉS DE LOS HOOKS
@@ -133,6 +157,7 @@ export default function ProductosComponent() {
   if (!tieneAcceso) {
     return <UnAuthoriceComponent />;
   }
+
   /* ===================== COLUMNS ===================== */
   const columns: Column<Producto>[] = [
     {
@@ -173,6 +198,7 @@ export default function ProductosComponent() {
       ),
     },
   ];
+
   const toggleSensibleTienda = (checked: boolean) => {
     setSensibleTienda(checked);
 
@@ -181,6 +207,62 @@ export default function ProductosComponent() {
       setSensibleCentral(false);
     }
   };
+
+  const descargarPlantillaProductos = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Profundidad");
+
+    // Definir columnas (cabeceras)
+    worksheet.columns = [
+      { header: "Subdepartamento", key: "subdepartamento", width: 15 },
+      { header: "Proveedor", key: "proveedor", width: 15 },
+      { header: "GTIN", key: "gtin", width: 15 },
+      { header: "SKU", key: "sku", width: 15 },
+      { header: "Descripcion", key: "descripcion", width: 40 },
+      { header: "Marca", key: "marca", width: 25 },
+      { header: "Cto. Prom", key: "costopromedio", width: 15 },
+      { header: "Prec. Vig", key: "preciovigente", width: 15 },
+      { header: "Case Pack", key: "casePack", width: 15 },
+      { header: "Unidad Vta.", key: "unidadMedida", width: 15 },
+      { header: "OH", key: "onhand", width: 15 },
+      { header: "Inv. Retail", key: "inventarioretail", width: 15 },
+    ];
+
+    // 🎨 Estilo de cabeceras (opcional pero PRO)
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).alignment = { vertical: "middle", horizontal: "center" };
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFEFEFEF" },
+      };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    // Crear archivo
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    saveAs(
+      new Blob([buffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      "Plantilla_Profundidad.xlsx"
+    );
+
+    notifications.show({
+      title: "Plantilla descargada",
+      message: "Se descargó la plantilla de profundidad correctamente",
+      color: "green",
+    });
+  };
+
 
   const toggleSensibleCentral = (checked: boolean) => {
     setSensibleCentral(checked);
@@ -191,6 +273,40 @@ export default function ProductosComponent() {
     }
   };
 
+  const importarProfundidad = async () => {
+    if (!fileProfundidad) {
+      notifications.show({
+        title: "Error",
+        message: "Debe seleccionar un archivo",
+        color: "red",
+      });
+      return;
+    }
+
+    show();
+
+    const ok = await upload(fileProfundidad);
+
+    if (ok) {
+      notifications.show({
+        title: "Importación completada",
+        message: `Se procesaron ${processed} registros`,
+        color: "green",
+      });
+
+      setRefreshTable((p) => !p);
+      setOpenProfundidadModal(false);
+      setFileProfundidad(null);
+    } else {
+      notifications.show({
+        title: "Error",
+        message: "Ocurrió un error al importar la profundidad",
+        color: "red",
+      });
+    }
+
+    hide();
+  };
 
   /* ===================== HANDLERS ===================== */
   const handleSave = async (data: Partial<Producto>) => {
@@ -219,7 +335,14 @@ export default function ProductosComponent() {
   };
 
   const importarSkus = async () => {
-    if (!fileSkus) return;
+    if (!fileSkus) {
+      notifications.show({
+        title: "Error",
+        message: "Debe seleccionar un archivo",
+        color: "red",
+      });
+      return;
+    }
 
     show();
 
@@ -243,6 +366,8 @@ export default function ProductosComponent() {
 
       setSkusNoEncontrados(result.datos || []);
       setRefreshTable((p) => !p);
+      setOpenImportModal(false);
+      setFileSkus(null);
     } finally {
       hide();
     }
@@ -280,10 +405,14 @@ export default function ProductosComponent() {
 
       {vista === "FLAGS" && <SubdptoFlagsAccordion />}
 
-      {/* ===== MODAL IMPORT ===== */}
+      {/* ===== MODAL IMPORT SKUS ===== */}
       <Modal
         opened={openImportModal}
-        onClose={() => setOpenImportModal(false)}
+        onClose={() => {
+          setOpenImportModal(false);
+          setFileSkus(null);
+          setSkusNoEncontrados([]);
+        }}
         title="Importar SKUs como Mercadería Sensible"
       >
         <FileSelector
@@ -320,6 +449,52 @@ export default function ProductosComponent() {
             </Text>
 
             {skusNoEncontrados.map((s) => (
+              <Badge key={s} color="red" mr="xs" mt="xs">
+                {s}
+              </Badge>
+            ))}
+          </Card>
+        )}
+      </Modal>
+
+      {/* ===== MODAL IMPORT PROFUNDIDAD ===== */}
+      <Modal
+        opened={openProfundidadModal}
+        onClose={() => {
+          setOpenProfundidadModal(false);
+          setFileProfundidad(null);
+          setProfundidadNoEncontrados([]);
+        }}
+        title="Importar Profundidad de Productos"
+      >
+        <FileSelector
+          file={fileProfundidad}
+          onChange={setFileProfundidad}
+          title="Seleccione el archivo Excel con la profundidad"
+        />
+
+        <Button
+          fullWidth
+          mt="md"
+          onClick={importarProfundidad}
+          disabled={!fileProfundidad || loadingUpload}
+        >
+          Procesar archivo
+        </Button>
+
+        {loadingUpload && (
+          <Text mt="sm" size="sm" c="dimmed">
+            Registros procesados: {processed}
+          </Text>
+        )}
+
+        {profundidadNoEncontrados.length > 0 && (
+          <Card mt="md">
+            <Text fw={600}>
+              SKUs no encontrados ({profundidadNoEncontrados.length})
+            </Text>
+
+            {profundidadNoEncontrados.map((s) => (
               <Badge key={s} color="red" mr="xs" mt="xs">
                 {s}
               </Badge>

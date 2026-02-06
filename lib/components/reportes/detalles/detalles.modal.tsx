@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Select, Flex, Text, Badge, Tooltip, ActionIcon, Button } from "@mantine/core";
+import { Select, Flex, Text, Badge, Tooltip, ActionIcon, Button, MultiSelect, Modal, TextInput } from "@mantine/core";
 import ModalCustomComponent, { TitleHead } from "../../common/modalCustom.component";
 import { Detalle, Reporte } from "@/lib/interfaces/maestros/reportes.interface";
 import ResponsiveDataTable, { Column } from "../../common/responsiveTable.component";
 import { getDetalleReporteByTim } from "@/lib/actions/maestros/detalle.action";
+import { DatePickerInput } from "@mantine/dates";
+import ExcelJS from "exceljs";
+import 'dayjs/locale/es';
+import '@mantine/dates/styles.css';
 import { CATEGORIAS_MACRO, SUBDEPARTAMENTOS } from "@/lib/utils/constantes";
 import {
     Document,
@@ -21,7 +25,7 @@ import {
 import { saveAs } from "file-saver";
 import { useLoadingStore } from "@/lib/store/useLoadingStore";
 import { formatDate } from "@/lib/hooks/helpers";
-import { IconFile, IconRefresh } from "@tabler/icons-react";
+import { IconFile, IconRefresh, IconFileSpreadsheet } from "@tabler/icons-react";
 import { reactivarTim } from "@/lib/actions/maestros/reporte.action";
 import { notifications } from "@mantine/notifications";
 import Router from "next/router";
@@ -44,10 +48,43 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     const [rowsOriginales, setRowsOriginales] = useState<Detalle[]>([]);
     const { show, hide } = useLoadingStore();
     const { userData } = useUserDataStore();
+
     /* ===================== FILTROS ===================== */
     const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
-    const [selectedSubDpto, setSelectedSubDpto] = useState<string | null>(null);
+    const [selectedSubDptos, setSelectedSubDptos] = useState<string[]>([]);
     const [tipoSensible, setTipoSensible] = useState<TipoSensible>(null);
+
+    /* ===================== MODAL EXPORTACIÓN ===================== */
+    const [modalOpen, setModalOpen] = useState(false);
+    const [empresaTransporte, setEmpresaTransporte] = useState("");
+    const [conductor, setConductor] = useState("");
+    const [fechaRecepcion, setFechaRecepcion] = useState<string | null>(new Date().toISOString().split('T')[0]);
+
+    /* ===================== HELPERS ===================== */
+    const formatFechaDDMMYY = (date: Date | null): string => {
+        if (!date) return "";
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
+    };
+
+    const limpiarFiltros = () => {
+        setSelectedDepartamento(null);
+        setSelectedSubDptos([]);
+        setTipoSensible(null);
+    };
+
+    const limpiarModalExportacion = () => {
+        setEmpresaTransporte("");
+        setConductor("");
+        setFechaRecepcion(new Date().toISOString().split('T')[0]);
+    };
+
+    const cerrarModalExportacion = () => {
+        setModalOpen(false);
+        limpiarModalExportacion();
+    };
 
     /* ===================== CARGA ÚNICA ===================== */
     useEffect(() => {
@@ -76,6 +113,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
         window.location.reload();
         hide();
     }
+
     const recargarDatos = async () => {
         if (!initialData?.tim) return;
 
@@ -83,13 +121,12 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
         try {
             const resp = await getDetalleReporteByTim(initialData.tim);
             setRowsOriginales(resp?.datos ?? []);
-            // 👉 si quieres conservar filtros, NO llames limpiarFiltros()
-            // limpiarFiltros();
         } finally {
             hide();
         }
     };
 
+    /* ===================== COLUMNAS ===================== */
     const columns: Column<Detalle>[] = [
         {
             field: "sku",
@@ -131,7 +168,6 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                         {row.marcaSensible ? "Sí" : "No"}
                     </Badge>
                 );
-
             }
         },
         {
@@ -145,7 +181,6 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                         {row.isContable ? "Sí" : "No"}
                     </Badge>
                 );
-
             }
         },
         {
@@ -176,7 +211,6 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                             : 0}
                     </>
                 );
-
             }
         },
         {
@@ -191,8 +225,8 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
             align: "left",
             sortable: true,
         },
-
     ];
+
     /* ===================== SUBDPTOS ===================== */
     const subDptos = useMemo(
         () =>
@@ -206,36 +240,20 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
         [rowsOriginales]
     );
 
-    const subDptosMS = useMemo(
-        () =>
-            Array.from(
-                new Set(
-                    rowsOriginales
-                        .filter((d) => d.marcaSensible)
-                        .map((d) => d.subdpto)
-                        .filter((s): s is string => !!s)
-                )
-            ),
-        [rowsOriginales]
-    );
-
     /* ===================== FILTRO LOCAL ===================== */
     const rowsFiltrados = useMemo(() => {
         let data = [...rowsOriginales];
 
-        // 🟡 FILTRO DEPARTAMENTO
         if (selectedDepartamento) {
             data = data.filter((d) =>
                 d.subdpto?.startsWith(selectedDepartamento)
             );
         }
 
-        // 🟡 FILTRO SUBDEPTO
-        if (selectedSubDpto) {
-            data = data.filter((d) => d.subdpto === selectedSubDpto);
+        if (selectedSubDptos.length > 0) {
+            data = data.filter((d) => selectedSubDptos.includes(d.subdpto!));
         }
 
-        // 🔵 FILTRO MERCADERÍA SENSIBLE
         if (tipoSensible === "TIENDA") {
             data = data.filter((d) => d.isContable === true);
         }
@@ -248,35 +266,231 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     }, [
         rowsOriginales,
         selectedDepartamento,
-        selectedSubDpto,
+        selectedSubDptos,
         tipoSensible,
     ]);
 
+    /* ===================== FALTANTES Y SOBRANTES ===================== */
+    const faltantes = useMemo(() => {
+        return rowsFiltrados.filter(d => d.uRecibidas < d.uEnviadas);
+    }, [rowsFiltrados]);
 
-    /* ===================== HELPERS ===================== */
-    const limpiarFiltros = () => {
-        setSelectedDepartamento(null);
-        setSelectedSubDpto(null);
-        setTipoSensible(null);
+    const sobrantes = useMemo(() => {
+        return rowsFiltrados.filter(d => d.uRecibidas > d.uEnviadas);
+    }, [rowsFiltrados]);
+    const formatFechaEnvio = (fecha: string | Date | null | undefined): string => {
+        if (!fecha) return "";
+
+        let date: Date;
+
+        // Si es string, convertir a Date
+        if (typeof fecha === 'string') {
+            date = new Date(fecha);
+        } else if (fecha instanceof Date) {
+            date = fecha;
+        } else {
+            return "";
+        }
+
+        // Verificar que sea una fecha válida
+        if (isNaN(date.getTime())) return "";
+
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
     };
 
+    /* ===================== EXPORTAR EXCEL ===================== */
+    const exportarExcelTIM = async () => {
+        if (!initialData?.tim) {
+            notifications.show({
+                title: "Atención",
+                message: "Debe seleccionar un TIM antes de exportar",
+                color: "yellow",
+            });
+            return;
+        }
+        if (!fechaRecepcion) {
+            notifications.show({
+                title: "Error",
+                message: "Debe seleccionar la fecha de recepción",
+                color: "red",
+            });
+            return;
+        }
 
-    const disableMS = Boolean(selectedDepartamento || selectedSubDpto);
+        show();
 
-    const titleHead: TitleHead = {
-        title: `Detalles del Reporte #${initialData?.tim ?? ""}`,
+        try {
+            const fechaRecepcionFormatted = formatFechaDDMMYY(new Date(fechaRecepcion as string));
+            const fechaEnvioFormatted = formatFechaEnvio(initialData?.fechaEnvio as string | Date | null | undefined);
+            const origenRaw = initialData?.origen ?? "";
+            const origenParts = origenRaw.trim().split(/\s+/);
+            const codigoOrigen = origenParts.length > 0 ? origenParts[0] : "";
+            const movilOrigen = origenRaw.includes("CD Secos") ? "CD Secos" : "";
+
+            const destinoRaw = initialData?.destino ?? "";
+            const destinoParts = destinoRaw.split(/\s*-\s*/);
+            const codigoTienda = destinoParts.length > 0 ? destinoParts[0].trim() : "";
+            const tiendaDestino = destinoParts.length > 1 ? destinoParts[1].trim() : "";
+
+            const workbook = new ExcelJS.Workbook();
+
+            /* =============== HOJA FALTANTES =============== */
+            const sheetFaltantes = workbook.addWorksheet("Faltantes");
+
+            sheetFaltantes.columns = [
+                { header: "FECHA ENVÍO", width: 15 },
+                { header: "FECHA RECEPCIÓN", width: 18 },
+                { header: "CÓDIGO DE TIENDA", width: 18 },
+                { header: "TIENDA", width: 22 },
+                { header: "ORIGEN", width: 18 },
+                { header: "MÓVIL", width: 14 },
+                { header: "EMPRESA DE TRANSPORTE", width: 26 },
+                { header: "CONDUCTOR", width: 22 },
+                { header: "ASUNTO", width: 22 },
+                { header: "TIM", width: 14 },
+                { header: "OLPN", width: 16 },
+                { header: "DEPARTAMENTO", width: 16 },
+                { header: "SKU", width: 16 },
+                { header: "EAN", width: 18 },
+                { header: "DESCRIPCIÓN DE SKU", width: 40 },
+                { header: "UNIDAD DE MEDIDA", width: 18 },
+                { header: "CANTIDAD EN GUIA", width: 20 },
+                { header: "CANTIDAD RECIBIDA", width: 22 },
+                { header: "DIFERENCIA", width: 14 },
+                { header: "COSTO PROMEDIO", width: 18 },
+                { header: "MONTO FALTANTE (S/)", width: 22 },
+                { header: "RESPONSABLE", width: 20 },
+                { header: "RESOLUCIÓN", width: 20 },
+                { header: "MARCA SENSIBLE", width: 18 },
+            ];
+
+            faltantes.forEach(d => {
+                const diferencia = d.uEnviadas - d.uRecibidas;
+                const costo = d.costoPromedio ?? 0;
+                const montoFaltante = diferencia * costo;
+                const asunto = `DISCREPANCIA_${fechaRecepcionFormatted}_${movilOrigen}_TIM_${initialData.tim} ${codigoTienda}_${tiendaDestino}`;
+
+                let marca = "-";
+                if (d.marcaSensible) marca = "C";
+                else if (d.isContable) marca = "T";
+
+                sheetFaltantes.addRow([
+                    fechaEnvioFormatted,
+                    fechaRecepcionFormatted,
+                    codigoTienda,
+                    tiendaDestino,
+                    codigoOrigen,
+                    movilOrigen,
+                    empresaTransporte,
+                    conductor,
+                    asunto ?? "",
+                    initialData.tim,
+                    d.olpn ?? "",
+                    d.subdpto ?? "",
+                    d.sku,
+                    d.ean ?? "",
+                    d.descripcion,
+                    d.uMedida ?? "",
+                    d.uEnviadas,
+                    d.uRecibidas,
+                    diferencia,
+                    costo,
+                    montoFaltante,
+                    d.modificadoPor ?? userData?.nombre,
+                    "PENDIENTE",
+                    marca,
+                ]);
+            });
+
+            /* =============== HOJA SOBRANTES =============== */
+            const sheetSobrantes = workbook.addWorksheet("Sobrantes");
+
+            sheetSobrantes.columns = [
+                { header: "FECHA ENVÍO", width: 15 },
+                { header: "FECHA RECEPCIÓN", width: 18 },
+                { header: "TIM", width: 14 },
+                { header: "SKU", width: 16 },
+                { header: "DESCRIPCIÓN", width: 40 },
+                { header: "SUBDPTO", width: 14 },
+                { header: "CAJAS ENVIADAS", width: 16 },
+                { header: "UNIDADES ENVIADAS", width: 18 },
+                { header: "CASEPACK", width: 14 },
+                { header: "CAJAS RECIBIDAS", width: 18 },
+                { header: "UNIDADES RECIBIDAS", width: 20 },
+                { header: "SOBRANTE", width: 14 },
+                { header: "COSTO PROMEDIO", width: 18 },
+                { header: "TOTAL SOBRANTE", width: 18 },
+                { header: "MARCA SENSIBLE", width: 16 },
+            ];
+
+            sobrantes.forEach(d => {
+                const sobrante = d.uRecibidas - d.uEnviadas;
+                const costo = d.costoPromedio ?? 0;
+
+                let marca = "-";
+                if (d.marcaSensible) marca = "C";
+                else if (d.isContable) marca = "T";
+
+                sheetSobrantes.addRow([
+                    fechaEnvioFormatted,
+                    fechaRecepcionFormatted,
+                    initialData.tim,
+                    d.sku,
+                    d.descripcion,
+                    d.subdpto,
+                    d.casePack ? d.uEnviadas / d.casePack : 0,
+                    d.uEnviadas,
+                    d.casePack ?? 0,
+                    d.casePack ? d.uRecibidas / d.casePack : 0,
+                    d.uRecibidas,
+                    sobrante,
+                    costo,
+                    sobrante * costo,
+                    marca,
+                ]);
+            });
+
+            /* =============== DESCARGA =============== */
+            const buffer = await workbook.xlsx.writeBuffer();
+
+            saveAs(
+                new Blob([buffer], {
+                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                }),
+                `BITACORA_TIM_${initialData?.tim}.xlsx`
+            );
+
+            notifications.show({
+                title: "Éxito",
+                message: "Excel exportado correctamente",
+                color: "green",
+            });
+
+        } catch (error) {
+            console.error("Error al exportar:", error);
+            notifications.show({
+                title: "Error",
+                message: "No se pudo exportar el Excel",
+                color: "red",
+            });
+        } finally {
+            hide();
+        }
     };
+
+    /* ===================== EXPORTAR WORD ===================== */
     const exportarWordMotivoT = async () => {
         if (!initialData?.tim) return;
 
-        /* ===================== HELPERS ===================== */
         const cell = (
             text: string,
             width: number,
             align: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.CENTER,
             bold = false
         ) =>
-
             new TableCell({
                 width: { size: width, type: WidthType.PERCENTAGE },
                 children: [
@@ -293,7 +507,6 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                 ],
             });
 
-        /* ===================== DATOS ===================== */
         const titulo = "ACTA DE ENTREGA DE DONACIÓN";
         const empresa = "Hipermercados Tottus S.A.";
         const RUC = "20508565934";
@@ -304,16 +517,10 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
         const mes = fecha.toLocaleString("es-PE", { month: "long" });
         const anio = fecha.getFullYear();
 
-        const parrafoIntro = `
-En el distrito de Pacasmayo, provincia de Pacasmayo del día ${dia} de ${mes} del ${anio}, 
-suscriben la siguiente acta; de parte de ${empresa} con RUC N° ${RUC} (donante) y de la otra 
-parte el Sr(a) ____________________________________, D.I. ______________________ como 
-representante del comedor ${donatario} (donatario), para proceder con la entrega (donación) 
-de los bienes detallados líneas abajo; los cuales serán destinados a obras sociales de la 
-entidad beneficiada.`.trim();
+        const parrafoIntro = `En el distrito de Pacasmayo, provincia de Pacasmayo del día ${dia} de ${mes} del ${anio}, suscriben la siguiente acta; de parte de ${empresa} con RUC N° ${RUC} (donante) y de la otra parte el Sr(a) ____________________________________, D.I. ______________________ como representante del comedor ${donatario} (donatario), para proceder con la entrega (donación) de los bienes detallados líneas abajo; los cuales serán destinados a obras sociales de la entidad beneficiada.`.trim();
+
         const parrafoIntro2 = `Se detalla la relación y cantidad de artículos a donar por ${empresa}.`.trim();
 
-        /* ===================== TABLA PRODUCTOS ===================== */
         const headerRow = new TableRow({
             children: [
                 cell("N°", 5, AlignmentType.CENTER, true),
@@ -340,23 +547,16 @@ entidad beneficiada.`.trim();
             rows: [headerRow, ...bodyRows],
         });
 
-        /* ===================== TABLA FIRMAS (ESTILO ACTA REAL) ===================== */
         const firmasTable = new Table({
-            width: {
-                size: 100,
-                type: WidthType.PERCENTAGE,
-            },
+            width: { size: 100, type: WidthType.PERCENTAGE },
             layout: TableLayoutType.FIXED,
             rows: [
-                /* ================= ENCABEZADO ================= */
                 new TableRow({
                     children: [
-                        // Celda vacía esquina
                         new TableCell({
                             width: { size: 20, type: WidthType.PERCENTAGE },
                             children: [new Paragraph("")],
                         }),
-
                         new TableCell({
                             width: { size: 40, type: WidthType.PERCENTAGE },
                             children: [
@@ -368,7 +568,6 @@ entidad beneficiada.`.trim();
                                 }),
                             ],
                         }),
-
                         new TableCell({
                             width: { size: 40, type: WidthType.PERCENTAGE },
                             children: [
@@ -382,76 +581,47 @@ entidad beneficiada.`.trim();
                         }),
                     ],
                 }),
-
-                /* ================= NOMBRES ================= */
                 new TableRow({
                     children: [
                         new TableCell({
                             children: [new Paragraph({
                                 alignment: AlignmentType.CENTER,
-                                children: [
-                                    new TextRun({ text: "NOMBRES", bold: true }),
-                                ],
+                                children: [new TextRun({ text: "NOMBRES", bold: true })],
                             })],
                         }),
-                        new TableCell({
-                            children: [new Paragraph("")],
-                        }),
-                        new TableCell({
-                            children: [new Paragraph("")],
-                        }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
                     ],
                 }),
-
-                /* ================= DNI ================= */
                 new TableRow({
                     children: [
                         new TableCell({
                             children: [new Paragraph({
                                 alignment: AlignmentType.CENTER,
-                                children: [
-                                    new TextRun({ text: "DNI", bold: true }),
-                                ],
+                                children: [new TextRun({ text: "DNI", bold: true })],
                             })],
                         }),
-                        new TableCell({
-                            children: [new Paragraph("")],
-                        }),
-                        new TableCell({
-                            children: [new Paragraph("")],
-                        }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
                     ],
                 }),
-
-                /* ================= FIRMA (MÁS ALTA) ================= */
                 new TableRow({
-                    height: {
-                        value: 1200, // 🔥 más alto para firma
-                        rule: "atLeast",
-                    },
+                    height: { value: 1200, rule: "atLeast" },
                     children: [
                         new TableCell({
                             verticalAlign: VerticalAlign.CENTER,
                             children: [new Paragraph({
                                 alignment: AlignmentType.CENTER,
-                                children: [
-                                    new TextRun({ text: "FIRMA", bold: true }),
-                                ],
+                                children: [new TextRun({ text: "FIRMA", bold: true })],
                             })],
                         }),
-                        new TableCell({
-                            children: [new Paragraph("")],
-                        }),
-                        new TableCell({
-                            children: [new Paragraph("")],
-                        }),
+                        new TableCell({ children: [new Paragraph("")] }),
+                        new TableCell({ children: [new Paragraph("")] }),
                     ],
                 }),
             ],
         });
 
-
-        /* ===================== DOCUMENTO ===================== */
         const doc = new Document({
             sections: [
                 {
@@ -459,45 +629,24 @@ entidad beneficiada.`.trim();
                         new Paragraph({
                             alignment: AlignmentType.CENTER,
                             spacing: { after: 400 },
-                            children: [
-                                new TextRun({
-                                    text: titulo,
-                                    bold: true,
-                                    size: 32,
-                                }),
-                            ],
-                        }),
-
-                        new Paragraph({
-                            spacing: { after: 400 },
-                            children: [
-                                new TextRun({
-                                    text: parrafoIntro,
-                                    size: 22,
-                                }),
-                            ],
+                            children: [new TextRun({ text: titulo, bold: true, size: 32 })],
                         }),
                         new Paragraph({
                             spacing: { after: 400 },
-                            children: [
-                                new TextRun({
-                                    text: parrafoIntro2,
-                                    size: 22,
-                                }),
-                            ],
+                            children: [new TextRun({ text: parrafoIntro, size: 22 })],
+                        }),
+                        new Paragraph({
+                            spacing: { after: 400 },
+                            children: [new TextRun({ text: parrafoIntro2, size: 22 })],
                         }),
                         productosTable,
-
                         new Paragraph({
                             spacing: { before: 400, after: 300 },
-                            children: [
-                                new TextRun({
-                                    text: "Las personas que firman esta acta dan conformidad a la misma.",
-                                    size: 22,
-                                }),
-                            ],
+                            children: [new TextRun({
+                                text: "Las personas que firman esta acta dan conformidad a la misma.",
+                                size: 22
+                            })],
                         }),
-
                         firmasTable,
                     ],
                 },
@@ -508,153 +657,232 @@ entidad beneficiada.`.trim();
         saveAs(blob, `ACTA_DONACION_TIM_${initialData.tim}.docx`);
     };
 
-
-
-
+    const titleHead: TitleHead = {
+        title: `Detalles del Reporte #${initialData?.tim ?? ""}`,
+    };
 
     /* ===================== RENDER ===================== */
     return (
-        <ModalCustomComponent
-            titleHead={titleHead}
-            opened={opened}
-            size="100%"
-            handlerClose={() => {
-                limpiarFiltros();
-                onClose();
-            }}
-            showConfirm={false}
-        >
-            <>
-                {/* ===================== FILTROS ===================== */}
-                <Flex gap="md" align="flex-end" wrap="wrap" mb="md">
+        <>
+            <ModalCustomComponent
+                titleHead={titleHead}
+                opened={opened}
+                size="100%"
+                handlerClose={() => {
+                    limpiarFiltros();
+                    onClose();
+                }}
+                showConfirm={false}
+            >
+                <div>
+                    <Flex gap="md" align="flex-end" wrap="wrap" mb="md">
+                        <Select
+                            label="Departamento"
+                            placeholder="Seleccione..."
+                            style={{ width: 260 }}
+                            searchable
+                            clearable
+                            value={selectedDepartamento}
+                            data={Array.from(new Set(subDptos.map((s) => s.substring(0, 3)))).map(
+                                (prefix) => {
+                                    const cat = CATEGORIAS_MACRO.find((c) => c.prefix === prefix);
+                                    return {
+                                        value: prefix,
+                                        label: `${prefix} - ${cat?.label ?? "Sin categoría"}`,
+                                    };
+                                }
+                            )}
+                            onChange={(v) => {
+                                setSelectedDepartamento(v);
+                                setSelectedSubDptos([]);
+                            }}
+                        />
 
-                    <Select
-                        label="Departamento"
-                        placeholder="Seleccione..."
-                        style={{ width: 260 }}
-                        searchable
-                        clearable
-                        value={selectedDepartamento}
-                        data={Array.from(new Set(subDptos.map((s) => s.substring(0, 3)))).map(
-                            (prefix) => {
-                                const cat = CATEGORIAS_MACRO.find((c) => c.prefix === prefix);
-                                return {
-                                    value: prefix,
-                                    label: `${prefix} - ${cat?.label ?? "Sin categoría"}`,
-                                };
-                            }
+                        <MultiSelect
+                            label="Subdepartamento"
+                            placeholder="Seleccione uno o más..."
+                            style={{ width: 280 }}
+                            disabled={!selectedDepartamento}
+                            searchable
+                            clearable
+                            value={selectedSubDptos}
+                            maxLength={2}
+                            data={subDptos
+                                .filter((s) =>
+                                    selectedDepartamento ? s.startsWith(selectedDepartamento) : true
+                                )
+                                .map((s) => ({
+                                    value: s,
+                                    label: `${s} - ${SUBDEPARTAMENTOS.find((d) => d.codigo === s)?.descripcion ?? ""}`,
+                                }))}
+                            onChange={(values) => {
+                                setSelectedSubDptos(values);
+                            }}
+                        />
+
+                        <Select
+                            label="Mercadería Sensible"
+                            placeholder="Todos"
+                            style={{ width: 300 }}
+                            searchable
+                            clearable
+                            value={tipoSensible}
+                            data={[
+                                { value: "TIENDA", label: "Sensible Tienda" },
+                                { value: "CENTRAL", label: "Sensible Central" },
+                            ]}
+                            onChange={(v) => setTipoSensible(v as TipoSensible)}
+                        />
+
+                        <button
+                            onClick={limpiarFiltros}
+                            style={{
+                                padding: "8px 16px",
+                                background: "#0CC20CFF",
+                                color: "white",
+                                borderRadius: 8,
+                                border: "none",
+                                cursor: "pointer",
+                                height: 40,
+                            }}
+                        >
+                            Limpiar
+                        </button>
+
+                        {initialData?.motivo === "T" && initialData.estado == false && (
+                            <Tooltip label="Exportar Excel">
+                                <ActionIcon
+                                    variant="filled"
+                                    color="teal"
+                                    size="lg"
+                                    onClick={() => setModalOpen(true)}
+                                    style={{ height: 40 }}
+                                >
+                                    <IconFileSpreadsheet size={20} />
+                                </ActionIcon>
+                            </Tooltip>
                         )}
-                        onChange={(v) => {
-                            setSelectedDepartamento(v);
-                            setSelectedSubDpto(null);
-                        }}
-                    />
 
-                    <Select
-                        label="Subdepartamento"
-                        placeholder="Seleccione..."
-                        style={{ width: 280 }}
-                        disabled={!selectedDepartamento}
-                        searchable
-                        clearable
-                        value={selectedSubDpto}
-                        data={subDptos
-                            .filter((s) =>
-                                selectedDepartamento ? s.startsWith(selectedDepartamento) : true
-                            )
-                            .map((s) => ({
-                                value: s,
-                                label: `${s} - ${SUBDEPARTAMENTOS.find((d) => d.codigo === s)?.descripcion ?? ""
-                                    }`,
-                            }))}
-                        onChange={(v) => {
-                            setSelectedSubDpto(v);
-                        }}
-                    />
+                        {initialData?.motivo === "D" && (
+                            <Tooltip label="Exportar Word">
+                                <ActionIcon
+                                    variant="filled"
+                                    color="blue"
+                                    size="lg"
+                                    onClick={exportarWordMotivoT}
+                                    style={{ height: 40 }}
+                                >
+                                    <IconFile size={20} />
+                                </ActionIcon>
+                            </Tooltip>
+                        )}
 
-                    <Select
-                        label="Mercadería Sensible"
-                        placeholder="Todos"
-                        style={{ width: 300 }}
-                        searchable
-                        clearable
-                        value={tipoSensible}
-                        data={[
-                            { value: "TIENDA", label: "Sensible Tienda" },
-                            { value: "CENTRAL", label: "Sensible Central" },
-                        ]}
-                        onChange={(v) => setTipoSensible(v as TipoSensible)}
-                    />
-
-
-                    <button
-                        onClick={limpiarFiltros}
-                        style={{
-                            padding: "8px 16px",
-                            background: "#0CC20CFF",
-                            color: "white",
-                            borderRadius: 8,
-                            border: "none",
-                            cursor: "pointer",
-                            height: 40,
-                        }}
-                    >
-                        Limpiar
-                    </button>
-                    {initialData?.motivo === "D" && (
-
-                        <Tooltip label="Exportar Word">
+                        <Tooltip label="Recargar datos">
                             <ActionIcon
                                 variant="filled"
                                 color="blue"
                                 size="lg"
-                                onClick={exportarWordMotivoT}
+                                onClick={recargarDatos}
                                 style={{ height: 40 }}
                             >
-                                <IconFile size={20} />
+                                <IconRefresh size={20} />
                             </ActionIcon>
                         </Tooltip>
-                    )}
-                    <Tooltip label="Recargar datos">
-                        <ActionIcon
-                            variant="filled"
-                            color="blue"
-                            size="lg"
-                            onClick={recargarDatos}
-                            style={{ height: 40 }}
-                        >
-                            <IconRefresh size={20} />
-                        </ActionIcon>
-                    </Tooltip>
-                    {initialData?.estado == false && (userData?.rol === "administrador" || userData?.rol === "supervisor") && (
-                        <button style={{
-                            padding: "8px 16px",
-                            background: "#E0EE22",
-                            color: "white",
-                            borderRadius: 8,
-                            border: "none",
-                            cursor: "pointer",
-                            height: 40,
-                        }} onClick={activarTim}>Activar Reporte</button>
-                    )}
-                </Flex>
 
+                        {initialData?.estado == false && initialData.motivo == "T" && (userData?.rol === "administrador" || userData?.rol === "supervisor") && (
+                            <button
+                                style={{
+                                    padding: "8px 16px",
+                                    background: "red",
+                                    color: "white",
+                                    borderRadius: 8,
+                                    border: "none",
+                                    cursor: "pointer",
+                                    height: 40,
+                                }}
+                                onClick={activarTim}
+                            >
+                                Activar Tim
+                            </button>
+                        )}
+                    </Flex>
 
-                {/* ===================== TABLA ===================== */}
-                {rowsFiltrados.length === 0 ? (
-                    <Text mt="lg" c="dimmed">
-                        No hay datos para mostrar.
-                    </Text>
-                ) : (
-                    <ResponsiveDataTable
-                        columns={columns}
-                        rows={rowsFiltrados}
-                        manualMode={false}
-                        totalRows={rowsFiltrados.length}
+                    {rowsFiltrados.length === 0 ? (
+                        <Text mt="lg" c="dimmed">
+                            No hay datos para mostrar.
+                        </Text>
+                    ) : (
+                        <ResponsiveDataTable
+                            columns={columns}
+                            rows={rowsFiltrados}
+                            manualMode={false}
+                            totalRows={rowsFiltrados.length}
+                        />
+                    )}
+                </div>
+            </ModalCustomComponent>
+
+            <Modal
+                opened={modalOpen}
+                onClose={cerrarModalExportacion}
+                title="Datos para exportar Excel"
+                centered
+            >
+                <Flex direction="column" gap="md">
+                    <TextInput
+                        label="Empresa de transporte"
+                        placeholder="Ingrese empresa"
+                        value={empresaTransporte}
+                        onChange={(e) => setEmpresaTransporte(e.currentTarget.value)}
+                        required
                     />
-                )}
-            </>
-        </ModalCustomComponent>
+
+                    <TextInput
+                        label="Conductor"
+                        placeholder="Ingrese conductor"
+                        value={conductor}
+                        onChange={(e) => setConductor(e.currentTarget.value)}
+                        required
+                    />
+
+                    <DatePickerInput
+                        label="Fecha de recepción"
+                        placeholder="Seleccione fecha"
+                        value={fechaRecepcion}
+                        onChange={(value) => setFechaRecepcion(value)}
+                        valueFormat="DD/MM/YYYY"
+                        clearable={false}
+                        required
+                        locale="es"
+                    />
+
+                    <Flex justify="flex-end" gap="sm" mt="md">
+                        <Button variant="default" onClick={cerrarModalExportacion}>
+                            Cancelar
+                        </Button>
+
+                        <Button
+                            onClick={() => {
+                                if (!empresaTransporte || !conductor) {
+                                    notifications.show({
+                                        title: "Datos incompletos",
+                                        message: "Debe ingresar empresa y conductor",
+                                        color: "red",
+                                    });
+                                    return;
+                                }
+
+                                setModalOpen(false);
+                                exportarExcelTIM();
+                                limpiarModalExportacion();
+                            }}
+                        >
+                            Exportar
+                        </Button>
+                    </Flex>
+                </Flex>
+            </Modal>
+        </>
     );
 };
 
