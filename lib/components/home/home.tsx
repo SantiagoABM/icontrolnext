@@ -564,17 +564,17 @@ export default function HomeComponent() {
   /* ===================== CRÍTICOS / SOBRANTES ===================== */
 
   const criticosBase = faltantes.filter(
-    (d) => (d.costoPromedio ?? 0) >= montoMenor
+    (d) => (d.costoPromedio * (d.uEnviadas - d.uRecibidas)) >= montoMenor
   );
 
   const criticos = criticosBase
     .slice()
     .sort((a, b) => {
       const totalB =
-        (b.costoPromedio ?? 0) * ((b.uRecibidas ?? 0) - (b.uEnviadas ?? 0));
+        (b.costoPromedio) * ((b.uRecibidas ?? 0) - (b.uEnviadas ?? 0));
 
       const totalA =
-        (a.costoPromedio ?? 0) * ((a.uRecibidas ?? 0) - (a.uEnviadas ?? 0));
+        (a.costoPromedio) * ((a.uRecibidas ?? 0) - (a.uEnviadas ?? 0));
 
       return totalA - totalB;
     })
@@ -870,8 +870,9 @@ export default function HomeComponent() {
         >
           <Table.Thead>
             <Table.Tr>
+              <Table.Th>SKU</Table.Th>
               <Table.Th>Descripción</Table.Th>
-              <Table.Th>Faltantes</Table.Th>
+              <Table.Th>Faltantes (UND)</Table.Th>
               <Table.Th>Costo Unit.</Table.Th>
               <Table.Th>Monto Total</Table.Th>
             </Table.Tr>
@@ -885,6 +886,7 @@ export default function HomeComponent() {
 
               return (
                 <Table.Tr key={i}>
+                  <Table.Td>{d.sku}</Table.Td>
                   <Table.Td>{d.descripcion}</Table.Td>
                   <Table.Td
                     style={{ color: "red", fontWeight: 700 }}
@@ -933,8 +935,9 @@ export default function HomeComponent() {
         >
           <Table.Thead>
             <Table.Tr>
+              <Table.Th>SKU</Table.Th>
               <Table.Th>Descripción</Table.Th>
-              <Table.Th>Sobrantes</Table.Th>
+              <Table.Th>Sobrantes (UND)</Table.Th>
               <Table.Th>Costo Unit.</Table.Th>
               <Table.Th>Monto Total</Table.Th>
             </Table.Tr>
@@ -949,6 +952,8 @@ export default function HomeComponent() {
 
               return (
                 <Table.Tr key={i}>
+                  <Table.Td>{d.sku}</Table.Td>
+
                   <Table.Td>{d.descripcion}</Table.Td>
                   <Table.Td
                     style={{ color: "red", fontWeight: 700 }}
@@ -1056,6 +1061,8 @@ export default function HomeComponent() {
               r.fechaEnvio
             )}`,
           }))}
+          searchable
+          clearable
           onChange={(value) => {
             const r = reportes.find(
               (x) => String(x.tim) === value

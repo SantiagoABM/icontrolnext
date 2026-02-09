@@ -290,7 +290,7 @@ export default function ProductosComponent() {
     if (ok) {
       notifications.show({
         title: "Importación completada",
-        message: `Se procesaron ${processed} registros`,
+        message: `Se procesaron todos los registros`,
         color: "green",
       });
 
