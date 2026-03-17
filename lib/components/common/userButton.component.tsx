@@ -135,6 +135,12 @@ export function UserButton({ nombre, perfil, img, id }: UserButtonProps) {
         </Menu.Dropdown>
       </Menu> */}
       <Group gap={4}>
+        {nombre && (
+           <Badge variant="outline" color="green" radius="sm" fw={600}>
+              {nombre}
+           </Badge>
+        )}
+        
         <ActionIcon
           variant="subtle"
           size="md"

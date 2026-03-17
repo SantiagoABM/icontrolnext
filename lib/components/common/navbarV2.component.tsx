@@ -20,7 +20,7 @@ import {
 
 import { randomId, useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import TitlePageComponent from "@/lib/components/common/TitlePage.component";
 import { menuItemsMock, urlBase } from "@/lib/utils/constantes";
 import {
@@ -80,6 +80,7 @@ export default function NavbarComponent({ children }: NavbarProps) {
     const [opened, { toggle, close }] = useDisclosure();
     const isMobile = useMediaQuery(LAYOUT_CONFIG.mobile.breakpoint);
     const router = useRouter();
+    const pathname = usePathname();
     const { classes } = useStyles();
 
     // State
@@ -210,54 +211,73 @@ export default function NavbarComponent({ children }: NavbarProps) {
 
     const NavigationContent = (
         <ScrollArea style={{ flex: 1 }} scrollbarSize={7}>
-            <Stack pt={isMobile ? 20 : 70} pb={20} px={isMobile ? 20 : 10}>
-                {menuItems.map((item) => (
-                    <Flex
-                        key={item.id}
-                        align="center"
-                        justify={collapsed && !isMobile ? "center" : "flex-start"}
-                        gap={collapsed && !isMobile ? 0 : 12}
-                        p={collapsed && !isMobile ? 8 : 12}
-                        onClick={() => {
-                            router.push(item.url);
-                            if (isMobile) close();
-                        }}
-                        style={{
-                            cursor: "pointer",
-                            borderRadius: 10,
-                            transition: "all 0.15s ease",
-                            backgroundColor: "transparent",
-                        }}
-                        onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor =
-                            colorScheme === "dark"
-                                ? "rgba(255,255,255,0.08)"
-                                : "rgba(0,0,0,0.05)")
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = "transparent")
-                        }
-                    >
-
-                        {/* Ícono */}
-                        <Box
+            <Stack pt={isMobile ? 20 : 70} pb={20} px={isMobile ? 20 : 8} gap={4}>
+                {menuItems.map((item) => {
+                    const isActive = item.url === "/home" 
+                        ? pathname === "/home" 
+                        : pathname?.startsWith(item.url) || false;
+                    
+                    return (
+                        <Flex
+                            key={item.id}
+                            align="center"
+                            justify={collapsed && !isMobile ? "center" : "flex-start"}
+                            gap={collapsed && !isMobile ? 0 : 12}
+                            px={collapsed && !isMobile ? 0 : 12}
+                            py={10}
+                            onClick={() => {
+                                router.push(item.url);
+                                if (isMobile) close();
+                            }}
                             style={{
-                                minWidth: collapsed && !isMobile ? "auto" : 26,
-                                display: "flex",
-                                justifyContent: "center",
+                                cursor: "pointer",
+                                borderRadius: 12,
+                                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                backgroundColor: isActive 
+                                    ? (colorScheme === "dark" ? "rgba(107, 207, 68, 0.15)" : "rgba(12, 194, 12, 0.1)")
+                                    : "transparent",
+                                color: isActive
+                                    ? (colorScheme === "dark" ? "#6BCF44" : "#0CC20C")
+                                    : "inherit",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "scale(1.02)";
+                                if (!isActive) {
+                                    e.currentTarget.style.backgroundColor = colorScheme === "dark"
+                                        ? "rgba(255,255,255,0.06)"
+                                        : "rgba(0,0,0,0.04)";
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "scale(1)";
+                                if (!isActive) {
+                                    e.currentTarget.style.backgroundColor = "transparent";
+                                }
                             }}
                         >
-                            {item.icon}
-                        </Box>
 
-                        {/* Texto — SOLO si no está colapsado y NO es mobile */}
-                        {(!collapsed || isMobile) && (
-                            <Text size={isMobile ? "md" : "sm"} fw={600}>
-                                {item.label}
-                            </Text>
-                        )}
-                    </Flex>
-                ))}
+                            {/* Ícono */}
+                            <Box
+                                style={{
+                                    minWidth: collapsed && !isMobile ? "auto" : 24,
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    opacity: isActive ? 1 : 0.75,
+                                    transition: "opacity 0.2s ease",
+                                }}
+                            >
+                                {item.icon}
+                            </Box>
+
+                            {/* Texto — SOLO si no está colapsado y NO es mobile */}
+                            {(!collapsed || isMobile) && (
+                                <Text size={isMobile ? "md" : "sm"} fw={isActive ? 600 : 500} style={{ whiteSpace: "nowrap" }}>
+                                    {item.label}
+                                </Text>
+                            )}
+                        </Flex>
+                    );
+                })}
             </Stack>
         </ScrollArea>
     );
@@ -301,7 +321,7 @@ export default function NavbarComponent({ children }: NavbarProps) {
                         />
                     </Group>
 
-                    <UserButton />
+                    <UserButton nombre={userData?.nombre} />
                 </Group>
                 {titulo.trim() !== "" && (
                     <TitlePageComponent
@@ -503,9 +523,10 @@ export default function NavbarComponent({ children }: NavbarProps) {
                     <Flex
                         gap={isMobile ? 4 : 2}
                         p={isMobile ? 5 : 0}
-                        justify={"space-between"}
-                        align={"center"}
-                        h={"100%"}
+                        justify="center"
+                        align="center"
+                        h="100%"
+                        w="100%"
                         wrap="nowrap"
                     >
                         <ActionIcon
@@ -517,7 +538,6 @@ export default function NavbarComponent({ children }: NavbarProps) {
                                 color: themeStyles.iconColor,
                                 minWidth: isMobile ? "48px" : "auto",
                                 height: isMobile ? "48px" : "auto",
-                                flex: "1 1 auto",
                             }}
                             aria-label="Menú"
                         >

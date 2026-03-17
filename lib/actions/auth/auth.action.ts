@@ -43,6 +43,7 @@ export async function LoginAction({
 }): Promise<RespuestaApi<UsuarioSesion>> {
 
     try {
+        console.log("SERVER ACTION LoginAction CALLED WITH:", dni);
         return await peticionPOSTSesion({
             endpoint: `${process.env.NEXT_PUBLIC_ENDPOINT_AUTENTICACION_INICIAR_SESION}`,
             body: {
@@ -51,7 +52,8 @@ export async function LoginAction({
                 admin
             },
         });
-    } catch (error) {
+    } catch (error: any) {
+        console.error("DEBUG LoginAction Error:", error?.message || error);
         return {
             success: false,
             mensaje: "Ha ocurrido un error tratando de validar los accesos",

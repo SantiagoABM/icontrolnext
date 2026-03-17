@@ -50,7 +50,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     const { userData } = useUserDataStore();
 
     /* ===================== FILTROS ===================== */
-    const [selectedDepartamento, setSelectedDepartamento] = useState<string | null>(null);
+    const [selectedDepartamento, setSelectedDepartamento] = useState<string[]>([]);
     const [selectedSubDptos, setSelectedSubDptos] = useState<string[]>([]);
     const [tipoSensible, setTipoSensible] = useState<TipoSensible>(null);
 
@@ -70,7 +70,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     };
 
     const limpiarFiltros = () => {
-        setSelectedDepartamento(null);
+        setSelectedDepartamento([]);
         setSelectedSubDptos([]);
         setTipoSensible(null);
     };
@@ -94,7 +94,9 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
             const resp = await getDetalleReporteByTim(initialData.tim!);
             console.log("Detalles cargados:", resp);
             setRowsOriginales(resp?.datos ?? []);
-            limpiarFiltros();
+            setSelectedDepartamento([]);
+            setSelectedSubDptos([]);
+            setTipoSensible(null);
             hide();
         };
 
@@ -244,9 +246,9 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     const rowsFiltrados = useMemo(() => {
         let data = [...rowsOriginales];
 
-        if (selectedDepartamento) {
+        if (selectedDepartamento.length > 0) {
             data = data.filter((d) =>
-                d.subdpto?.startsWith(selectedDepartamento)
+                selectedDepartamento.some(dept => d.subdpto?.startsWith(dept))
             );
         }
 
@@ -676,12 +678,24 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
             >
                 <div>
                     <Flex gap="md" align="flex-end" wrap="wrap" mb="md">
-                        <Select
+                        <MultiSelect
                             label="Departamento"
-                            placeholder="Seleccione..."
+                            placeholder="Departamentos..."
                             style={{ width: 260 }}
                             searchable
                             clearable
+                            hidePickedOptions
+                            styles={{
+                                input: {
+                                    maxHeight: '36px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                },
+                                pill: {
+                                    maxWidth: '100px',
+                                }
+                            }}
                             value={selectedDepartamento}
                             data={Array.from(new Set(subDptos.map((s) => s.substring(0, 3)))).map(
                                 (prefix) => {
@@ -700,16 +714,29 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
 
                         <MultiSelect
                             label="Subdepartamento"
-                            placeholder="Seleccione uno o más..."
+                            placeholder="Subdepartamentos..."
                             style={{ width: 280 }}
-                            disabled={!selectedDepartamento}
+                            disabled={selectedDepartamento.length === 0}
                             searchable
                             clearable
+                            hidePickedOptions
+                            styles={{
+                                input: {
+                                    maxHeight: '36px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                },
+                                pill: {
+                                    maxWidth: '120px',
+                                }
+                            }}
                             value={selectedSubDptos}
-                            maxLength={2}
                             data={subDptos
                                 .filter((s) =>
-                                    selectedDepartamento ? s.startsWith(selectedDepartamento) : true
+                                    selectedDepartamento.length > 0
+                                        ? selectedDepartamento.some(dept => s.startsWith(dept))
+                                        : true
                                 )
                                 .map((s) => ({
                                     value: s,

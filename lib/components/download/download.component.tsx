@@ -32,7 +32,7 @@ export default function ApkDownloadCard() {
     <Container
       size="xs"
       style={{
-        minHeight: "100dvh",
+        minHeight: "calc(100vh - 140px)",
         display: "flex",
         alignItems: "center",
       }}
@@ -60,11 +60,11 @@ export default function ApkDownloadCard() {
           {/* ✅ GRID RESPONSIVE REAL */}
           <Grid w="100%" mt="md">
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Versión" value="2.1.1" />
+              <Info label="Versión" value="2.1.2+1" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Compilado" value="05/02/2026" />
+              <Info label="Compilado" value="17/03/2026" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>

@@ -8,6 +8,7 @@ import { ControlTheme } from "@/lib/utils/constantes";
 import { Notifications } from "@mantine/notifications";
 import { ConfirmProvider } from "@/lib/providers/confirm.provider";
 import { GlobalLoader } from "./globalLoader.component";
+import NextTopLoader from "nextjs-toploader";
 import dayjs from "dayjs";
 dayjs.locale("es");
 
@@ -27,6 +28,7 @@ export default function LayoutGlobalComponent({
 
   return (
     <>
+      <NextTopLoader color="#0CC20C" showSpinner={false} />
       <MantineProvider theme={ControlTheme}>
         <ConfirmProvider>{children}</ConfirmProvider>
         <Notifications />

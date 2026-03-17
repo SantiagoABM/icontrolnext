@@ -4,7 +4,6 @@ import { MenuItem } from "../interfaces/global.interfaces";
 
 export type IconType = typeof IconHome;
 export const redondear = (valor: number) => Number(valor.toFixed(2));
-const hola = ''
 export const apiBase = process.env.NEXT_PUBLIC_URL_API_CONTROVERDE;
 export const urlBase = process.env.NEXT_PUBLIC_BASE_PATH || '';
 export const urlBaseApplication = process.env.NEXT_PUBLIC_BASE_URL_APPLICATION || ''

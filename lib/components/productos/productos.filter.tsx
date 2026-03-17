@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
 import {
     Group,
-    Select,
+    MultiSelect,
     Checkbox,
     Stack,
     Grid,
@@ -54,14 +54,14 @@ export default function ProductosFilter({
     const [opened, { toggle }] = useDisclosure(false);
     const [ean, setEAN] = useState<string | null>(null);
     const [sku, setSKU] = useState<string | null>(null);
-    const [subdpto, setSubdpto] = useState<string | null>(null);
+    const [subdpto, setSubdpto] = useState<string[]>([]);
     //   const [fechaIni, setFechaIni] = useState<string | null>(fechaFormateada);
     //   const [fechaFin, setFechaFin] = useState<string | null>(fechaFormateada);
     const [costoPromedio, setcostoPromedio] = useState<number | null>(null);
     const [casePack, setCasePack] = useState<number | null>(null);
     const [descripcion, setDescripcion] = useState<string | null>(null);
-    const [marca, setMarca] = useState<string | null>(null);
-    const [proveedor, setProveedor] = useState<string | null>(null);
+    const [marca, setMarca] = useState<string[]>([]);
+    const [proveedor, setProveedor] = useState<string[]>([]);
 
     const [subdptosOptions, setSubdptosOptions] = useState<string[]>([]);
     const [proveedoresOptions, setProveedoresOptions] = useState<string[]>([]);
@@ -145,34 +145,70 @@ export default function ProductosFilter({
                             />
 
                         </SimpleGrid>
-                        <Select
+                        <MultiSelect
                             label="Sub Departamento"
-                            placeholder="J0..."
-                            onChange={(e) => setSubdpto(e || "")}
-                            value={subdpto || null}
+                            placeholder="Subdepartamentos..."
+                            onChange={(v) => setSubdpto(v)}
+                            value={subdpto}
                             data={subDptosSelect}
                             searchable
                             clearable
+                            hidePickedOptions
+                            styles={{
+                                input: {
+                                    maxHeight: '36px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                },
+                                pill: {
+                                    maxWidth: '120px',
+                                }
+                            }}
                         />
 
-                        <Select
+                        <MultiSelect
                             label="Proveedor"
-                            placeholder="Proveedor..."
-                            onChange={(e) => setProveedor(e || "")}
-                            value={proveedor || null}
+                            placeholder="Proveedores..."
+                            onChange={(v) => setProveedor(v)}
+                            value={proveedor}
                             data={proveedoresSelect}
                             searchable
                             clearable
+                            hidePickedOptions
+                            styles={{
+                                input: {
+                                    maxHeight: '36px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                },
+                                pill: {
+                                    maxWidth: '120px',
+                                }
+                            }}
                         />
 
-                        <Select
+                        <MultiSelect
                             label="Marca"
-                            placeholder="Marca..."
-                            onChange={(e) => setMarca(e || "")}
-                            value={marca || null}
+                            placeholder="Marcas..."
+                            onChange={(v) => setMarca(v)}
+                            value={marca}
                             data={marcasSelect}
                             searchable
                             clearable
+                            hidePickedOptions
+                            styles={{
+                                input: {
+                                    maxHeight: '36px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                },
+                                pill: {
+                                    maxWidth: '100px',
+                                }
+                            }}
                         />
                         <SimpleGrid
                             cols={{ base: 1, sm: 2, md: 2, lg: 2 }}
@@ -249,9 +285,9 @@ export default function ProductosFilter({
                                     setDescripcion(null);
                                     setEAN(null);
                                     setSKU(null);
-                                    setMarca(null);
-                                    setProveedor(null);
-                                    setSubdpto(null);
+                                    setMarca([]);
+                                    setProveedor([]);
+                                    setSubdpto([]);
                                     setcostoPromedio(null);
                                     setCasePack(null);
                                 }}

@@ -34,8 +34,7 @@ export async function processExcelReportFront(
     // ============================
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
-
-    console.log("Hojas detectadas:", workbook.SheetNames);
+    
 
     if (workbook.SheetNames.length === 0) {
       return {

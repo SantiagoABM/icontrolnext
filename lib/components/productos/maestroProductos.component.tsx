@@ -286,7 +286,7 @@ export default function ProductosComponent() {
     show();
 
     const ok = await upload(fileProfundidad);
-
+    
     if (ok) {
       notifications.show({
         title: "Importación completada",

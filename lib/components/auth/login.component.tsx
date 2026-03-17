@@ -90,46 +90,57 @@ export default function LoginPageComponent() {
         //     return;
         // }
         const formData = new FormData(ev.target as HTMLFormElement);
+        const dni = formData.get("nroDoc") || "";
+        const password = formData.get("password") || "";
+        
+        console.log("FORM SUBMITTED - DNI:", dni, "PASSWORD:", password ? "***" : "EMPTY");
+
         const result = await LoginAction({
-            dni: formData.get("nroDoc") || "",
-            password: formData.get("password") || "",
+            dni,
+            password,
         });
         if (!result.success) {
-            console.log("Error en login:", result.mensaje);
-            setError(result.mensaje);
-            // resetCaptcha();
+            const errorMsg = result.mensaje === "Error" || !result.mensaje 
+                ? "No se pudo conectar con el servidor. Verifica que el backend esté encendido." 
+                : result.mensaje;
+            console.log("Error en login:", errorMsg);
+            setError(errorMsg);
             notifications.show({
-                title: "Error",
-                message: result.mensaje,
+                title: "Error de autenticación",
+                message: errorMsg,
             });
             setLoading(false);
             return;
         }
         console.log("Usuario en login:", result.datos);
-        setUsuario(result.datos)
+        setUsuario(result.datos);
         setUserData({ userData: result.datos });
-        setLoading(false);
+        
+        if (result.datos) {
+            await guardarSesion(result.datos);
+        }
     };
 
-    const guardarSesion = async () => {
-        if (!usuario) {
+    const guardarSesion = async (usuarioData: UsuarioSesion) => {
+        if (!usuarioData) {
+            setLoading(false);
             return;
         }
 
-        setLoading(true);
-
         const datosSesion: DatosSesion = {
-            nombre: usuario.nombre,
-            rol: usuario.rol,
-            token: usuario.token,
-            updatePass: usuario.updatePass
+            nombre: usuarioData.nombre,
+            rol: usuarioData.rol,
+            token: usuarioData.token,
+            updatePass: usuarioData.updatePass
         };
         const res = await GuardarSesion({ datosSesion });
-        if (!res.success) { notifications.show({ title: "ERROR", message: "No se pudo guardar la sesión" }) }
+        if (!res.success) {
+            notifications.show({ title: "ERROR", message: "No se pudo guardar la sesión" });
+            setLoading(false);
+            return;
+        }
 
-
-        router.refresh();
-        setLoading(false);
+        router.push("/home");
     };
 
     // Preparar datos para el Select
@@ -163,12 +174,7 @@ export default function LoginPageComponent() {
         }
     }, []);
 
-    useEffect(() => {
-        if (usuario) {
-            guardarSesion();
-        }
-        setLoading(false);
-    }, [usuario]);
+
 
     return (
         <Box

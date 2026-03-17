@@ -318,15 +318,22 @@ export async function peticionPOSTSesion({
 
     try {
         const res = await axios.post(`${apiBase}${endpoint}`, body);
+        console.log("RESPONSE FROM SERVER:", res.data);
 
         return {
-            success: res.data.success,   // ← ✔ CORRECTO
-            mensaje: res.data.message,
-            datos: res.data.datos,
+            success: res.data.success !== undefined ? res.data.success : !res.data.status?.isError,
+            mensaje: res.data.message || res.data.status?.message || "Sin mensaje",
+            datos: res.data.datos || res.data.data || null,
             sesion: false
         };
 
     } catch (error: any) {
+        console.error("DEBUG peticionPOSTSesion API Error:", {
+            message: error?.message,
+            code: error?.code,
+            status: error?.response?.status,
+            data: error?.response?.data
+        });
 
         const statusCode = error?.response?.status;
         const isAuthError = statusCode === 401 || statusCode === 403;
