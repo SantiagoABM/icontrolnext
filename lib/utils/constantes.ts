@@ -9,7 +9,7 @@ export const urlBase = process.env.NEXT_PUBLIC_BASE_PATH || '';
 export const urlBaseApplication = process.env.NEXT_PUBLIC_BASE_URL_APPLICATION || ''
 export const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || "error";
 export const minutosSesion = 60;
-export const title = process.env.NEXT_PUBLIC_TITLE || "Control Verde"
+export const title = process.env.NEXT_PUBLIC_TITLE || "IControl"
 
 export const cookieName = "control_name_sesion";
 export const Mb1 = 1024; //para calcular

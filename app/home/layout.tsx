@@ -4,8 +4,8 @@ import SessionActivityProvider from "@/lib/providers/sessionActivity.provider";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Control Verde",
-    description: "Control Verde",
+    title: "IControl",
+    description: "IControl",
 };
 
 export default function HomeLayout({

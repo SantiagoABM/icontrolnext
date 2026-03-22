@@ -50,7 +50,7 @@ export default function ApkDownloadCard() {
           </ThemeIcon>
 
           <Title order={2} ta="center">
-            Control Verde
+            IControl
           </Title>
 
           <Text size="sm" c="dimmed" ta="center">
@@ -60,11 +60,11 @@ export default function ApkDownloadCard() {
           {/* ✅ GRID RESPONSIVE REAL */}
           <Grid w="100%" mt="md">
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Versión" value="2.1.2+1" />
+              <Info label="Versión" value="2.2.0+1" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Compilado" value="17/03/2026" />
+              <Info label="Compilado" value="22/03/2026" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>

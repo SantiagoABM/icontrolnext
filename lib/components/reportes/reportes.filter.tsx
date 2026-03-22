@@ -117,11 +117,11 @@ export default function ReporteFilters({
                             gap="sm"
                             align="flex-end"
                             direction={{ base: "column", sm: "row" }}
-                            mt={10}
+                            mt={26}
                         >
                             <Button
                                 variant="filled"
-                                size="small"
+                                size="sm"
                                 leftSection={<IconFilter size="1rem" />}
                                 onClick={() => {
                                     handlerFilter({
@@ -142,7 +142,7 @@ export default function ReporteFilters({
 
                             <Button
                                 variant="subtle"
-                                size="small"
+                                size="sm"
                                 onClick={() => {
                                     setNroReporte(null);
                                     setMotivo("T");

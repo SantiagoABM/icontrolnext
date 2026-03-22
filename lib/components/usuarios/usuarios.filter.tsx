@@ -141,11 +141,11 @@ export default function UsuarioFilters({
                             gap="sm"
                             align="flex-end"
                             direction={{ base: "column", sm: "row" }}
-                            mt={10}
+                            mt={26}
                         >
                             <Button
                                 variant="filled"
-                                size="small"
+                                size="sm"
                                 leftSection={<IconFilter size="1rem" />}
                                 onClick={() => {
                                     handlerFilter({
@@ -170,7 +170,7 @@ export default function UsuarioFilters({
 
                             <Button
                                 variant="subtle"
-                                size="small"
+                                size="sm"
                                 onClick={() => {
                                     setDni(null);
                                     setCorreo(null);

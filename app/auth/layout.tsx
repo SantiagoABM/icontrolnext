@@ -2,8 +2,8 @@ import { urlBase } from "@/lib/utils/constantes";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Auth - Control Verde",
-  description: "Página de autenticación de Control Verde",
+  title: "Auth - IControl",
+  description: "Página de autenticación de IControl",
 };
 export default async function RootLayout({
   children,

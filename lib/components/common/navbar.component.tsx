@@ -19,7 +19,7 @@ export function Navbar() {
       }}
     >
       <Text fw={600} size="lg">
-        🌿 Control Verde
+        IControl
       </Text>
 
       <Group gap="xs">
