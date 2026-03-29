@@ -10,23 +10,14 @@ import {
   Grid,
   Container,
   ThemeIcon,
+  Accordion,
+  List,
 } from "@mantine/core";
-import { IconDownload, IconDeviceMobile } from "@tabler/icons-react";
+import { IconDownload, IconDeviceMobile, IconNotes } from "@tabler/icons-react";
 
 const APK_PATH = "/apk/icontrol.apk";
 
 export default function ApkDownloadCard() {
-  const [size, setSize] = useState("Calculando...");
-
-  useEffect(() => {
-    fetch(APK_PATH, { method: "HEAD" })
-      .then((res) => {
-        const bytes = res.headers.get("content-length");
-        if (!bytes) return;
-        setSize(`${(Number(bytes) / 1024 / 1024).toFixed(2)} MB`);
-      })
-      .catch(() => setSize("No disponible"));
-  }, []);
 
   return (
     <Container
@@ -60,17 +51,33 @@ export default function ApkDownloadCard() {
           {/* ✅ GRID RESPONSIVE REAL */}
           <Grid w="100%" mt="md">
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Versión" value="2.2.0+1" />
+              <Info label="Versión" value="2.2.1+2" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Compilado" value="22/03/2026" />
+              <Info label="Compilado" value="29/03/2026" />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <Info label="Peso" value={size} />
+              <Info label="Peso" value="81.2" />
             </Grid.Col>
           </Grid>
+          
+          <Accordion variant="separated" w="100%">
+            <Accordion.Item value="release-notes">
+              <Accordion.Control icon={<IconNotes size={18} color="green" />}>
+                <Text size="sm" fw={500}>Notas de versión (2.2.1+2)</Text>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List size="sm" spacing="xs">
+                  <List.Item>Solucionado error crítico en la base de datos de Inventario de Perecibles.</List.Item>
+                  <List.Item>Implementado sistema de bloqueo de reportes para prevenir condiciones de carrera.</List.Item>
+                  <List.Item>Mejorada la alineación visual de los botones de filtro.</List.Item>
+                  <List.Item>Corrección de errores menores y mejoras de estabilidad.</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
 
           <Button
             component="a"
