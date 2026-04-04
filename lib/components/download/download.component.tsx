@@ -15,7 +15,7 @@ import {
 } from "@mantine/core";
 import { IconDownload, IconDeviceMobile, IconNotes } from "@tabler/icons-react";
 
-const APK_PATH = "/apk/icontrol.apk";
+const APK_PATH = "/apk/IControl_2_2_1.apk";
 
 export default function ApkDownloadCard() {
 
