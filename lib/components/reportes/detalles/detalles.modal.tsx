@@ -24,11 +24,9 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import { useLoadingStore } from "@/lib/store/useLoadingStore";
-import { formatDate } from "@/lib/hooks/helpers";
 import { IconFile, IconRefresh, IconFileSpreadsheet } from "@tabler/icons-react";
 import { reactivarTim } from "@/lib/actions/maestros/reporte.action";
 import { notifications } from "@mantine/notifications";
-import Router from "next/router";
 import { useUserDataStore } from "@/lib/store/useUserDataStore";
 
 type TipoSensible = "TIENDA" | "CENTRAL" | null;
@@ -525,20 +523,26 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
 
         const headerRow = new TableRow({
             children: [
-                cell("N°", 5, AlignmentType.CENTER, true),
-                cell("SKU", 15, AlignmentType.CENTER, true),
-                cell("DESCRIPCIÓN", 60, AlignmentType.CENTER, true),
-                cell("CANT.", 20, AlignmentType.CENTER, true),
+                cell("N°", 4, AlignmentType.CENTER, true),
+                cell("SKU", 12, AlignmentType.CENTER, true),
+                cell("DESCRIPCIÓN", 30, AlignmentType.CENTER, true),
+                cell("CANT.", 10, AlignmentType.CENTER, true),
+                cell("FEC. VENC.", 15, AlignmentType.CENTER, true),
+                cell("UM", 4, AlignmentType.CENTER, true),
+                cell("MOTIVO", 20, AlignmentType.CENTER, true),
             ],
         });
 
         const bodyRows = rowsFiltrados.map((d, i) =>
             new TableRow({
                 children: [
-                    cell(String(i + 1), 5),
-                    cell(String(d.sku ?? ""), 15),
-                    cell(String(d.descripcion ?? ""), 60, AlignmentType.LEFT),
-                    cell(String(d.uRecibidas ?? 0), 20),
+                    cell(String(i + 1), 4),
+                    cell(String(d.sku ?? ""), 12),
+                    cell(String(d.descripcion ?? ""), 30, AlignmentType.LEFT),
+                    cell(String(d.uRecibidas ?? 0), 10),
+                    cell(String(d.fechavencimiento),15, AlignmentType.CENTER),
+                    cell(String(d.uMedida),4, AlignmentType.CENTER),
+                    cell(String(d.observacion ?? ""), 20, AlignmentType.CENTER),
                 ],
             })
         );
