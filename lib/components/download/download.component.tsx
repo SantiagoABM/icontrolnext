@@ -66,14 +66,12 @@ export default function ApkDownloadCard() {
           <Accordion variant="separated" w="100%">
             <Accordion.Item value="release-notes">
               <Accordion.Control icon={<IconNotes size={18} color="green" />}>
-                <Text size="sm" fw={500}>Notas de versión (2.2.1+2)</Text>
+                <Text size="sm" fw={500}>Notas de versión (2.4.0+3)</Text>
               </Accordion.Control>
               <Accordion.Panel>
                 <List size="sm" spacing="xs">
-                  <List.Item>Solucionado error crítico en la base de datos de Inventario de Perecibles.</List.Item>
-                  <List.Item>Implementado sistema de bloqueo de reportes para prevenir condiciones de carrera.</List.Item>
-                  <List.Item>Mejorada la alineación visual de los botones de filtro.</List.Item>
-                  <List.Item>Corrección de errores menores y mejoras de estabilidad.</List.Item>
+                  <List.Item>Se agregó un selector de obserbación al agregar un nuevo producto para donación.</List.Item>
+                  <List.Item>Nuevo módulo inventario pgc versión Beta(Por testear).</List.Item>
                 </List>
               </Accordion.Panel>
             </Accordion.Item>
