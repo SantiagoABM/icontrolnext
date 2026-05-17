@@ -62,6 +62,22 @@ export async function LoginAction({
     }
 }
 
+export async function ActualizarPasswordAction(body: any): Promise<RespuestaApi<any>> {
+    try {
+        return await peticionPOST({
+            endpoint: process.env.NEXT_PUBLIC_API_USUARIO_ACTUALIZAR_PASSWORD || "",
+            body
+        });
+    } catch (error: any) {
+        return {
+            success: false,
+            mensaje: "Ha ocurrido un error tratando de actualizar la contraseña",
+            datos: null,
+            sesion: false,
+        };
+    }
+}
+
 export async function RefrescarToken(refreshtoken: string): Promise<RespuestaApi<DatosSesion | null>> {
     const datosSesion = await ObtenerSesion();
     if (!datosSesion) {

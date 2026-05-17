@@ -128,7 +128,9 @@ export default function LoginPageComponent() {
         }
 
         const datosSesion: DatosSesion = {
+            id: usuarioData.id,
             nombre: usuarioData.nombre,
+            correo: usuarioData.correo,
             rol: usuarioData.rol,
             token: usuarioData.token,
             updatePass: usuarioData.updatePass
@@ -184,23 +186,66 @@ export default function LoginPageComponent() {
                 justifyContent: "center",
                 alignItems: "center",
                 minHeight: "100vh",
-                textAlign: "center",
+                width: "100%",
+                background: colorScheme === 'dark' 
+                    ? "radial-gradient(circle at top left, #1a1b1e 0%, #0d0d0d 100%)" 
+                    : "radial-gradient(circle at top left, #ffffff 0%, #f1f3f5 100%)",
+                position: "relative",
+                overflow: "hidden",
+                padding: "20px",
             }}
         >
-            <LoadingOverlay visible={loading} overlayProps={{ blur: 2 }} />
+            {/* Elementos decorativos de fondo para darle un look "striking" */}
+            <Box
+                style={{
+                    position: "absolute",
+                    top: "-10%",
+                    left: "-10%",
+                    width: "40vw",
+                    height: "40vw",
+                    borderRadius: "50%",
+                    background: colorScheme === 'dark' 
+                        ? "radial-gradient(circle, rgba(103, 171, 37, 0.15) 0%, rgba(0,0,0,0) 70%)"
+                        : "radial-gradient(circle, rgba(103, 171, 37, 0.1) 0%, rgba(255,255,255,0) 70%)",
+                    filter: "blur(60px)",
+                    zIndex: 0,
+                }}
+            />
+            <Box
+                style={{
+                    position: "absolute",
+                    bottom: "-10%",
+                    right: "-5%",
+                    width: "35vw",
+                    height: "35vw",
+                    borderRadius: "50%",
+                    background: colorScheme === 'dark' 
+                        ? "radial-gradient(circle, rgba(43, 138, 62, 0.1) 0%, rgba(0,0,0,0) 70%)"
+                        : "radial-gradient(circle, rgba(43, 138, 62, 0.08) 0%, rgba(255,255,255,0) 70%)",
+                    filter: "blur(60px)",
+                    zIndex: 0,
+                }}
+            />
 
             <Box
                 component="form"
                 onSubmit={submitForm}
                 style={{
-                    maxWidth: 400,
+                    maxWidth: 420,
                     width: "100%",
-                    padding: 24,
-                    borderRadius: 8,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    backgroundColor: "white",
+                    padding: "48px 40px",
+                    borderRadius: 24,
+                    boxShadow: colorScheme === 'dark' 
+                        ? "0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)"
+                        : "0 20px 40px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.5)",
+                    backgroundColor: colorScheme === 'dark' ? "rgba(26, 27, 30, 0.7)" : "rgba(255, 255, 255, 0.8)",
+                    backdropFilter: "blur(20px)",
+                    border: colorScheme === 'dark' ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(255,255,255,0.5)",
+                    zIndex: 1,
                 }}
             >
+                <LoadingOverlay visible={loading} overlayProps={{ blur: 2, radius: "lg" }} />
+
                 {/* LOGO */}
                 <Box
                     style={{
@@ -209,6 +254,7 @@ export default function LoginPageComponent() {
                         flexDirection: "column",
                         justifyContent: "center",
                         alignItems: "center",
+                        marginBottom: "32px"
                     }}
                 >
                     <img
@@ -219,39 +265,39 @@ export default function LoginPageComponent() {
                                 : "/Logo_Tottus.png")
                         }
                         alt="Logo Empresa"
-                        style={{ width: 150 }}
+                        style={{ width: 160, filter: colorScheme === 'dark' ? 'drop-shadow(0px 4px 10px rgba(0,0,0,0.3))' : 'none' }}
                     />
                 </Box>
 
                 {/* TÍTULO */}
-                <Title order={1} size={50} fw="bold" mb="md" c={color_Primario}>
-                    {title}
-                </Title>
+                <Box mb="xl" ta="center">
+                    <Title order={2} size={26} fw={800} c={colorScheme === 'dark' ? "white" : "dark.8"} style={{ letterSpacing: "-0.5px" }}>
+                        Bienvenido de vuelta
+                    </Title>
+                    <Text c="dimmed" size="sm" mt={4}>
+                        Ingresa tus credenciales para continuar
+                    </Text>
+                </Box>
 
-                <Stack gap="md">
-                    <Group grow align="flex-start">
-                        {/* <Select
-                            label="Tipo de Documento"
-                            placeholder="Selecciona"
-                            data={tiposDocumentoData}
-                            value={selectedTipoDoc?.codigo || null}
-                            onChange={(value) => {
-                                const selected = tiposDocumento.find(
-                                    (doc) => doc.codigo === value
-                                );
-                                setSelectedTipoDoc(selected || null);
-                            }}
-                            searchable
-                            required
-                        /> */}
-                        <TextInput
-                            label="Número de documento"
-                            placeholder="Ingresa tu número de Dni"
-                            name="nroDoc"
-                            required
-                            maxLength={20}
-                        />
-                    </Group>
+                <Stack gap="lg">
+                    <TextInput
+                        label="Número de Documento"
+                        placeholder="Ingresa tu DNI"
+                        name="nroDoc"
+                        required
+                        maxLength={20}
+                        size="md"
+                        radius="md"
+                        styles={{
+                            input: {
+                                backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
+                                border: colorScheme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
+                                '&:focus': {
+                                    borderColor: color_Primario,
+                                }
+                            }
+                        }}
+                    />
 
                     <PasswordInput
                         label="Contraseña"
@@ -261,30 +307,45 @@ export default function LoginPageComponent() {
                         maxLength={50}
                         visible={showPassword}
                         onVisibilityChange={setShowPassword}
+                        size="md"
+                        radius="md"
+                        styles={{
+                            input: {
+                                backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
+                                border: colorScheme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
+                                '&:focus': {
+                                    borderColor: color_Primario,
+                                }
+                            }
+                        }}
                     />
 
-                    {/* <Group gap="xs" align="center">
-            <Turnstile
-              sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
-              onVerify={(token) => setCaptchaToken(token)}
-              onLoad={(widgetId) => setTurnstileWidgetId(widgetId)}
-            />
-            <ActionIcon
-              onClick={resetCaptcha}
-              variant="subtle"
-              title="Reiniciar CAPTCHA"
-            >
-              <IconRestore />
-            </ActionIcon>
-          </Group> */}
-
                     {error && (
-                        <Text c="#67ab25" size="sm">
+                        <Text c="red.5" size="sm" ta="center" fw={500}>
                             {error}
                         </Text>
                     )}
 
-                    <Button type="submit" fullWidth>
+                    <Button 
+                        type="submit" 
+                        fullWidth 
+                        size="md" 
+                        radius="md" 
+                        mt="xs"
+                        color={color_Primario}
+                        style={{
+                            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                            boxShadow: `0 4px 14px 0 rgba(103, 171, 37, 0.39)`,
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = `0 6px 20px 0 rgba(103, 171, 37, 0.39)`;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = `0 4px 14px 0 rgba(103, 171, 37, 0.39)`;
+                        }}
+                    >
                         Iniciar Sesión
                     </Button>
                 </Stack>

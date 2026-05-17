@@ -124,3 +124,30 @@ export const updateUsuario = async (data: Partial<Usuario>): Promise<RespuestaAp
         };
     }
 }
+
+export const reestablecerPasswordAction = async (id: string): Promise<RespuestaApi<any>> => {
+    try {
+        const datosSesion = await ObtenerSesion();
+        if (!datosSesion) {
+            return {
+                success: false,
+                mensaje: 'No hay sesión activa',
+                datos: null,
+                sesion: false,
+            };
+        }
+        const result = await peticionPOST({
+            endpoint: `${process.env.NEXT_PUBLIC_API_USUARIO_REESTABLECER_PASSWORD}/${id}`,
+            body: {}
+        });
+
+        return result;
+    } catch (error) {
+        return {
+            success: false,
+            mensaje: 'Error al obtener la sesion',
+            datos: null,
+            sesion: false
+        };
+    }
+}

@@ -20,6 +20,9 @@ import ButtonActionTableComponent from "../common/buttonTable.component";
 import UsuarioForm from "./usuario.forms";
 import { validarRolUsuario } from "@/lib/hooks/verificarRol";
 import UnAuthoriceComponent from "../common/unauthorice.component";
+import { reestablecerPasswordAction } from "@/lib/actions/maestros/usuario.actions";
+import { ActionIcon, Tooltip, Group } from "@mantine/core";
+import { IconKey, IconUserOff, IconUserCheck } from "@tabler/icons-react";
 
 export default function UsuarioComponent() {
     const { show, hide } = useLoadingStore();
@@ -111,7 +114,30 @@ export default function UsuarioComponent() {
         refetch();
     }, [refreshTable]);
 
-    const columns: Column<Producto>[] = [
+    const handleReestablecerPassword = async (id: string) => {
+        show();
+        const res = await reestablecerPasswordAction(id);
+        hide();
+        if (res.success) {
+            notifications.show({ title: "Éxito", message: res.mensaje || "Contraseña reestablecida correctamente", color: "green" });
+        } else {
+            notifications.show({ title: "Error", message: res.mensaje || "Error al reestablecer la contraseña", color: "red" });
+        }
+    };
+
+    const handleCambiarEstado = async (id: string, estadoActual: boolean) => {
+        show();
+        const res = await updateUsuario({ _id: id, activo: !estadoActual });
+        hide();
+        if (res.success) {
+            notifications.show({ title: "Éxito", message: `Usuario ${!estadoActual ? 'habilitado' : 'deshabilitado'} correctamente`, color: "green" });
+            setRefreshTable((prev) => !prev);
+        } else {
+            notifications.show({ title: "Error", message: res.mensaje || "Error al cambiar estado del usuario", color: "red" });
+        }
+    };
+
+    const columns: Column<Usuario>[] = [
         {
             field: "dni",
             headerName: "DNI",
@@ -155,8 +181,30 @@ export default function UsuarioComponent() {
 
             }
         },
-
-
+        {
+            field: "_id",
+            headerName: "Acciones",
+            align: "center",
+            sortable: false,
+            renderCell: (_, row: Usuario) => (
+                <Group gap="xs" justify="center">
+                    <Tooltip label={row.activo ? "Deshabilitar Usuario" : "Habilitar Usuario"}>
+                        <ActionIcon 
+                            color={row.activo ? "red" : "green"} 
+                            variant="light"
+                            onClick={() => row._id && handleCambiarEstado(row._id, !!row.activo)}
+                        >
+                            {row.activo ? <IconUserOff size={18} /> : <IconUserCheck size={18} />}
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Reestablecer Contraseña">
+                        <ActionIcon color="orange" variant="light" onClick={() => row._id && handleReestablecerPassword(row._id)}>
+                            <IconKey size={18} />
+                        </ActionIcon>
+                    </Tooltip>
+                </Group>
+            )
+        }
     ];
     const handlerClose = () => {
         setOpenForm({ open: false, data: null });

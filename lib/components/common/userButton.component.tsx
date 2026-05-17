@@ -38,14 +38,14 @@ export function UserButton({ nombre, perfil, img, id }: UserButtonProps) {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   // const [menuOpened, setMenuOpened] = useState(false);
   // const [errorImg, setErrorImg] = useState(false);
-  // const router = useRouter();
+  const router = useRouter();
 
   // const handlerGoPerfil = () => {
   //   router.push(`/home/usuario/${id}`);
   // };
 
   return (
-    <Flex gap={4}>
+    <Flex gap={4} wrap="nowrap">
       {/* <Menu
         opened={menuOpened}
         onChange={setMenuOpened}
@@ -134,9 +134,9 @@ export function UserButton({ nombre, perfil, img, id }: UserButtonProps) {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu> */}
-      <Group gap={4}>
+      <Group gap={4} wrap="nowrap">
         {nombre && (
-           <Badge variant="outline" color="green" radius="sm" fw={600}>
+           <Badge variant="outline" color="green" radius="sm" fw={600} visibleFrom="sm">
               {nombre}
            </Badge>
         )}
@@ -156,6 +156,15 @@ export function UserButton({ nombre, perfil, img, id }: UserButtonProps) {
           ) : (
             <IconMoon size={16} />
           )}
+        </ActionIcon>
+
+        <ActionIcon
+          variant="subtle"
+          size="md"
+          onClick={() => router.push('/home/perfil')}
+          title="Mi Perfil"
+        >
+          <IconUserCircle size={18} />
         </ActionIcon>
 
         <ActionIcon

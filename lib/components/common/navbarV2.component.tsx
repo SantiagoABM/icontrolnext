@@ -35,6 +35,7 @@ import { UserButton } from "./userButton.component";
 import { Global } from "@mantine/styles";
 import { useStyles } from "@/lib/hooks/useStyles";
 import * as TablerIcons from "@tabler/icons-react";
+import { PasswordUpdateModal } from "../auth/passwordUpdateModal.component";
 
 
 // Interfaces
@@ -88,6 +89,15 @@ export default function NavbarComponent({ children }: NavbarProps) {
     const [collapsed, setCollapsed] = useState(true);
     // const [userData, setUserData] = useState<UserData | null>(null);
     const { setUserData, userData } = useUserDataStore();
+    const [passwordModalOpened, setPasswordModalOpened] = useState(false);
+
+    useEffect(() => {
+        if (userData && userData.updatePass === false) {
+            setPasswordModalOpened(true);
+        } else {
+            setPasswordModalOpened(false);
+        }
+    }, [userData]);
 
 
     // Event handlers
@@ -309,6 +319,7 @@ export default function NavbarComponent({ children }: NavbarProps) {
                     justify="space-between"
                     h={LAYOUT_CONFIG.topbar.height}
                     px="md"
+                    wrap="nowrap"
                     style={{
                         transition: "all 0.3s ease",
                     }}
@@ -562,6 +573,11 @@ export default function NavbarComponent({ children }: NavbarProps) {
                     </Flex>
                 </Paper>
             </Flex>
+
+            <PasswordUpdateModal 
+                opened={passwordModalOpened} 
+                onClose={() => setPasswordModalOpened(false)} 
+            />
         </Box>
     );
 }
