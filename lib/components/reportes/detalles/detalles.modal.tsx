@@ -8,7 +8,7 @@ import { DatePickerInput } from "@mantine/dates";
 import ExcelJS from "exceljs";
 import 'dayjs/locale/es';
 import '@mantine/dates/styles.css';
-import { CATEGORIAS_MACRO, SUBDEPARTAMENTOS } from "@/lib/utils/constantes";
+import { CATEGORIAS_MACRO, formatFechaDDMMYY, formatFechaEnvio, SUBDEPARTAMENTOS } from "@/lib/utils/constantes";
 import {
     Document,
     Packer,
@@ -28,6 +28,7 @@ import { IconFile, IconRefresh, IconFileSpreadsheet } from "@tabler/icons-react"
 import { reactivarTim } from "@/lib/actions/maestros/reporte.action";
 import { notifications } from "@mantine/notifications";
 import { useUserDataStore } from "@/lib/store/useUserDataStore";
+import { exportarExcelDonacion } from "@/lib/hooks/Excels/ExcelDonacion";
 
 type TipoSensible = "TIENDA" | "CENTRAL" | null;
 
@@ -59,13 +60,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     const [fechaRecepcion, setFechaRecepcion] = useState<string | null>(new Date().toISOString().split('T')[0]);
 
     /* ===================== HELPERS ===================== */
-    const formatFechaDDMMYY = (date: Date | null): string => {
-        if (!date) return "";
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const year = String(date.getFullYear()).slice(-2);
-        return `${day}/${month}/${year}`;
-    };
+   
 
     const limpiarFiltros = () => {
         setSelectedDepartamento([]);
@@ -278,30 +273,47 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     const sobrantes = useMemo(() => {
         return rowsFiltrados.filter(d => d.uRecibidas > d.uEnviadas);
     }, [rowsFiltrados]);
-    const formatFechaEnvio = (fecha: string | Date | null | undefined): string => {
-        if (!fecha) return "";
-
-        let date: Date;
-
-        // Si es string, convertir a Date
-        if (typeof fecha === 'string') {
-            date = new Date(fecha);
-        } else if (fecha instanceof Date) {
-            date = fecha;
-        } else {
-            return "";
-        }
-
-        // Verificar que sea una fecha válida
-        if (isNaN(date.getTime())) return "";
-
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const year = String(date.getFullYear()).slice(-2);
-        return `${day}/${month}/${year}`;
-    };
 
     /* ===================== EXPORTAR EXCEL ===================== */
+
+    const exportarExcel = async () => {
+      if (!initialData?.tim) {
+            notifications.show({
+                title: "Atención",
+                message: "Debe seleccionar un TIM antes de exportar",
+                color: "yellow",
+            });
+            return;
+        }
+        if (!fechaRecepcion) {
+            notifications.show({
+                title: "Error",
+                message: "Debe seleccionar la fecha de recepción",
+                color: "yellow",
+            });
+            return;
+        }
+        show();
+        try{
+            if(initialData?.motivo == "D") {
+                await exportarExcelDonacion(initialData, fechaRecepcion, rowsOriginales, userData?.nombre ?? "");
+            }
+        }catch(err){
+            console.error("Error al exportar Excel:", err);
+            notifications.show({
+                title: "Error",
+                message: "Error al exportar Excel",
+                color: "red",
+            });
+        } finally {
+            notifications.show({
+                title: "Éxito",
+                message: "Excel exportado correctamente",
+                color: "green",
+            });
+            hide();
+        }
+    }
     const exportarExcelTIM = async () => {
         if (!initialData?.tim) {
             notifications.show({
@@ -324,12 +336,11 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
 
         try {
             const fechaRecepcionFormatted = formatFechaDDMMYY(new Date(fechaRecepcion as string));
-            const fechaEnvioFormatted = formatFechaEnvio(initialData?.fechaEnvio as string | Date | null | undefined);
+            const fechaEnvioFormatted = formatFechaEnvio(initialData?.fechaEnvio as string);
             const origenRaw = initialData?.origen ?? "";
             const origenParts = origenRaw.trim().split(/\s+/);
             const codigoOrigen = origenParts.length > 0 ? origenParts[0] : "";
-            const movilOrigen = origenRaw.includes("CD Secos") ? "CD Secos" : "";
-
+            const movilOrigen = origenRaw.includes("CD Secos") ? "CD Secos" : "CD Frescos";
             const destinoRaw = initialData?.destino ?? "";
             const destinoParts = destinoRaw.split(/\s*-\s*/);
             const codigoTienda = destinoParts.length > 0 ? destinoParts[0].trim() : "";
@@ -540,8 +551,8 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                     cell(String(d.sku ?? ""), 12),
                     cell(String(d.descripcion ?? ""), 30, AlignmentType.LEFT),
                     cell(String(d.uRecibidas ?? 0), 10),
-                    cell(String(d.fechavencimiento),15, AlignmentType.CENTER),
-                    cell(String(d.uMedida),4, AlignmentType.CENTER),
+                    cell(String(d.fechavencimiento), 15, AlignmentType.CENTER),
+                    cell(String(d.uMedida), 4, AlignmentType.CENTER),
                     cell(String(d.observacion ?? ""), 20, AlignmentType.CENTER),
                 ],
             })
@@ -780,7 +791,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                             Limpiar
                         </button>
 
-                        {initialData?.motivo === "T" && initialData.estado == false && (
+                        {/* {initialData?.motivo === "T" && initialData.estado == false && (
                             <Tooltip label="Exportar Excel">
                                 <ActionIcon
                                     variant="filled"
@@ -792,8 +803,20 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                                     <IconFileSpreadsheet size={20} />
                                 </ActionIcon>
                             </Tooltip>
-                        )}
-
+                        )} */}
+                       
+                            <Tooltip label={initialData?.motivo == "T" ?"Exportar Excel Bitacora": "Exportar Excel Donación"}>
+                                <ActionIcon
+                                    variant="filled"
+                                    color="teal"
+                                    size="lg"
+                                    onClick={() => { initialData?.motivo == "T" ? setModalOpen(true) : exportarExcel() }}
+                                    style={{ height: 40 }}
+                                >
+                                    <IconFileSpreadsheet size={20} />
+                                </ActionIcon>
+                            </Tooltip>
+                
                         {initialData?.motivo === "D" && (
                             <Tooltip label="Exportar Word">
                                 <ActionIcon

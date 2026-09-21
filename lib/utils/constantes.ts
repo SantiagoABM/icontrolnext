@@ -4,6 +4,63 @@ import { MenuItem } from "../interfaces/global.interfaces";
 
 export type IconType = typeof IconHome;
 export const redondear = (valor: number) => Number(valor.toFixed(2));
+export const formatFechaDDMMYY = (date: Date | null): string => {
+        if (!date) return "";
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
+    };
+
+export const formatFechaEnvio = (fecha: string | Date | null | undefined): string => {
+        if (!fecha) return "";
+
+        let date: Date;
+
+        // Si es string, convertir a Date
+        if (typeof fecha === 'string') {
+            date = new Date(fecha);
+        } else if (fecha instanceof Date) {
+            date = fecha;
+        } else {
+            return "";
+        }
+
+        // Verificar que sea una fecha válida
+        if (isNaN(date.getTime())) return "";
+
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
+    };
+
+export const formatFechaDD_MM_YY = (fecha: string | Date | null | undefined): string => {
+    if (!fecha) return "";
+
+    let date: Date;
+
+    if (typeof fecha === "string") {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+            const [yyyy, mm, dd] = fecha.split("-");
+            return `${dd}_${mm}_${yyyy.slice(-2)}`;
+        }
+        date = new Date(fecha);
+    } else if (fecha instanceof Date) {
+        date = fecha;
+    } else {
+        return "";
+    }
+
+    if (isNaN(date.getTime())) return "";
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}_${month}_${year}`;
+};
+
+
 export const apiBase = process.env.NEXT_PUBLIC_URL_API_CONTROVERDE;
 export const urlBase = process.env.NEXT_PUBLIC_BASE_PATH || '';
 export const urlBaseApplication = process.env.NEXT_PUBLIC_BASE_URL_APPLICATION || ''
