@@ -29,6 +29,8 @@ import { reactivarTim } from "@/lib/actions/maestros/reporte.action";
 import { notifications } from "@mantine/notifications";
 import { useUserDataStore } from "@/lib/store/useUserDataStore";
 import { exportarExcelDonacion } from "@/lib/hooks/Excels/ExcelDonacion";
+import { exportarExcelTIM } from "@/lib/hooks/Excels/ExcelBitacora";
+import { exportarExcelNSG } from "@/lib/hooks/Excels/ExcelNSG";
 
 type TipoSensible = "TIENDA" | "CENTRAL" | null;
 
@@ -60,7 +62,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     const [fechaRecepcion, setFechaRecepcion] = useState<string | null>(new Date().toISOString().split('T')[0]);
 
     /* ===================== HELPERS ===================== */
-   
+
 
     const limpiarFiltros = () => {
         setSelectedDepartamento([]);
@@ -120,7 +122,50 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
             hide();
         }
     };
-
+    /* ===================== COLUMNAS NSG ===================== */
+    const columnsNSG: Column<Detalle>[] = [
+        {
+            field: "subdpto",
+            headerName: "División",
+            align: "left",
+            sortable: true,
+        },
+        {
+            field: "ean",
+            headerName: "EAN",
+            align: "left",
+            sortable: true,
+        },
+        {
+            field: "sku",
+            headerName: "SKU",
+            align: "left",
+            sortable: true,
+        },
+        {
+            field: "descripcion",
+            headerName: "Descripción",
+            align: "left",
+            sortable: true,
+        },
+        {
+            field: "uRecibidas",
+            headerName: "OK",
+            align: "center",
+            sortable: true,
+            renderCell: (_, row: Detalle) => (
+                <Badge color={row.uRecibidas > 0 ? "green" : "red"} variant="filled">
+                    {row.uRecibidas > 0 ? "OK" : "NO"}
+                </Badge>
+            )
+        },
+        {
+            field: "observacion",
+            headerName: "Observación",
+            align: "left",
+            sortable: true,
+        },
+    ];
     /* ===================== COLUMNAS ===================== */
     const columns: Column<Detalle>[] = [
         {
@@ -277,10 +322,10 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
     /* ===================== EXPORTAR EXCEL ===================== */
 
     const exportarExcel = async () => {
-      if (!initialData?.tim) {
+        if (!initialData?.tim) {
             notifications.show({
                 title: "Atención",
-                message: "Debe seleccionar un TIM antes de exportar",
+                message: "Debe seleccionar un reporte antes de exportar",
                 color: "yellow",
             });
             return;
@@ -294,11 +339,19 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
             return;
         }
         show();
-        try{
-            if(initialData?.motivo == "D") {
-                await exportarExcelDonacion(initialData, fechaRecepcion, rowsOriginales, userData?.nombre ?? "");
-            }
-        }catch(err){
+        try {
+            switch (initialData?.motivo) {
+                case "D":
+                    await exportarExcelDonacion(initialData, fechaRecepcion, rowsOriginales, userData?.nombre ?? "");
+                    return;
+                case "T":
+                    await exportarExcelTIM(initialData, empresaTransporte, conductor, fechaRecepcion, faltantes, sobrantes, userData?.nombre ?? "");
+                    return;
+                case "NSG":
+                    await exportarExcelNSG(initialData, fechaRecepcion, rowsOriginales, userData?.nombre ?? "");
+                    return;
+            };
+        } catch (err) {
             console.error("Error al exportar Excel:", err);
             notifications.show({
                 title: "Error",
@@ -314,183 +367,183 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
             hide();
         }
     }
-    const exportarExcelTIM = async () => {
-        if (!initialData?.tim) {
-            notifications.show({
-                title: "Atención",
-                message: "Debe seleccionar un TIM antes de exportar",
-                color: "yellow",
-            });
-            return;
-        }
-        if (!fechaRecepcion) {
-            notifications.show({
-                title: "Error",
-                message: "Debe seleccionar la fecha de recepción",
-                color: "red",
-            });
-            return;
-        }
+    // const exportarExcelTIM = async () => {
+    //     if (!initialData?.tim) {
+    //         notifications.show({
+    //             title: "Atención",
+    //             message: "Debe seleccionar un TIM antes de exportar",
+    //             color: "yellow",
+    //         });
+    //         return;
+    //     }
+    //     if (!fechaRecepcion) {
+    //         notifications.show({
+    //             title: "Error",
+    //             message: "Debe seleccionar la fecha de recepción",
+    //             color: "red",
+    //         });
+    //         return;
+    //     }
 
-        show();
+    //     show();
 
-        try {
-            const fechaRecepcionFormatted = formatFechaDDMMYY(new Date(fechaRecepcion as string));
-            const fechaEnvioFormatted = formatFechaEnvio(initialData?.fechaEnvio as string);
-            const origenRaw = initialData?.origen ?? "";
-            const origenParts = origenRaw.trim().split(/\s+/);
-            const codigoOrigen = origenParts.length > 0 ? origenParts[0] : "";
-            const movilOrigen = origenRaw.includes("CD Secos") ? "CD Secos" : "CD Frescos";
-            const destinoRaw = initialData?.destino ?? "";
-            const destinoParts = destinoRaw.split(/\s*-\s*/);
-            const codigoTienda = destinoParts.length > 0 ? destinoParts[0].trim() : "";
-            const tiendaDestino = destinoParts.length > 1 ? destinoParts[1].trim() : "";
+    //     try {
+    //         const fechaRecepcionFormatted = formatFechaDDMMYY(new Date(fechaRecepcion as string));
+    //         const fechaEnvioFormatted = formatFechaEnvio(initialData?.fechaEnvio as string);
+    //         const origenRaw = initialData?.origen ?? "";
+    //         const origenParts = origenRaw.trim().split(/\s+/);
+    //         const codigoOrigen = origenParts.length > 0 ? origenParts[0] : "";
+    //         const movilOrigen = origenRaw.includes("CD Secos") ? "CD Secos" : "CD Frescos";
+    //         const destinoRaw = initialData?.destino ?? "";
+    //         const destinoParts = destinoRaw.split(/\s*-\s*/);
+    //         const codigoTienda = destinoParts.length > 0 ? destinoParts[0].trim() : "";
+    //         const tiendaDestino = destinoParts.length > 1 ? destinoParts[1].trim() : "";
 
-            const workbook = new ExcelJS.Workbook();
+    //         const workbook = new ExcelJS.Workbook();
 
-            /* =============== HOJA FALTANTES =============== */
-            const sheetFaltantes = workbook.addWorksheet("Faltantes");
+    //         /* =============== HOJA FALTANTES =============== */
+    //         const sheetFaltantes = workbook.addWorksheet("Faltantes");
 
-            sheetFaltantes.columns = [
-                { header: "FECHA ENVÍO", width: 15 },
-                { header: "FECHA RECEPCIÓN", width: 18 },
-                { header: "CÓDIGO DE TIENDA", width: 18 },
-                { header: "TIENDA", width: 22 },
-                { header: "ORIGEN", width: 18 },
-                { header: "MÓVIL", width: 14 },
-                { header: "EMPRESA DE TRANSPORTE", width: 26 },
-                { header: "CONDUCTOR", width: 22 },
-                { header: "ASUNTO", width: 22 },
-                { header: "TIM", width: 14 },
-                { header: "OLPN", width: 16 },
-                { header: "DEPARTAMENTO", width: 16 },
-                { header: "SKU", width: 16 },
-                { header: "EAN", width: 18 },
-                { header: "DESCRIPCIÓN DE SKU", width: 40 },
-                { header: "UNIDAD DE MEDIDA", width: 18 },
-                { header: "CANTIDAD EN GUIA", width: 20 },
-                { header: "CANTIDAD RECIBIDA", width: 22 },
-                { header: "DIFERENCIA", width: 14 },
-                { header: "COSTO PROMEDIO", width: 18 },
-                { header: "MONTO FALTANTE (S/)", width: 22 },
-                { header: "RESPONSABLE", width: 20 },
-                { header: "RESOLUCIÓN", width: 20 },
-                { header: "MARCA SENSIBLE", width: 18 },
-            ];
+    //         sheetFaltantes.columns = [
+    //             { header: "FECHA ENVÍO", width: 15 },
+    //             { header: "FECHA RECEPCIÓN", width: 18 },
+    //             { header: "CÓDIGO DE TIENDA", width: 18 },
+    //             { header: "TIENDA", width: 22 },
+    //             { header: "ORIGEN", width: 18 },
+    //             { header: "MÓVIL", width: 14 },
+    //             { header: "EMPRESA DE TRANSPORTE", width: 26 },
+    //             { header: "CONDUCTOR", width: 22 },
+    //             { header: "ASUNTO", width: 22 },
+    //             { header: "TIM", width: 14 },
+    //             { header: "OLPN", width: 16 },
+    //             { header: "DEPARTAMENTO", width: 16 },
+    //             { header: "SKU", width: 16 },
+    //             { header: "EAN", width: 18 },
+    //             { header: "DESCRIPCIÓN DE SKU", width: 40 },
+    //             { header: "UNIDAD DE MEDIDA", width: 18 },
+    //             { header: "CANTIDAD EN GUIA", width: 20 },
+    //             { header: "CANTIDAD RECIBIDA", width: 22 },
+    //             { header: "DIFERENCIA", width: 14 },
+    //             { header: "COSTO PROMEDIO", width: 18 },
+    //             { header: "MONTO FALTANTE (S/)", width: 22 },
+    //             { header: "RESPONSABLE", width: 20 },
+    //             { header: "RESOLUCIÓN", width: 20 },
+    //             { header: "MARCA SENSIBLE", width: 18 },
+    //         ];
 
-            faltantes.forEach(d => {
-                const diferencia = d.uEnviadas - d.uRecibidas;
-                const costo = d.costoPromedio ?? 0;
-                const montoFaltante = diferencia * costo;
-                const asunto = `DISCREPANCIA_${fechaRecepcionFormatted}_${movilOrigen}_TIM_${initialData.tim} ${codigoTienda}_${tiendaDestino}`;
+    //         faltantes.forEach(d => {
+    //             const diferencia = d.uEnviadas - d.uRecibidas;
+    //             const costo = d.costoPromedio ?? 0;
+    //             const montoFaltante = diferencia * costo;
+    //             const asunto = `DISCREPANCIA_${fechaRecepcionFormatted}_${movilOrigen}_TIM_${initialData.tim} ${codigoTienda}_${tiendaDestino}`;
 
-                let marca = "-";
-                if (d.marcaSensible) marca = "C";
-                else if (d.isContable) marca = "T";
+    //             let marca = "-";
+    //             if (d.marcaSensible) marca = "C";
+    //             else if (d.isContable) marca = "T";
 
-                sheetFaltantes.addRow([
-                    fechaEnvioFormatted,
-                    fechaRecepcionFormatted,
-                    codigoTienda,
-                    tiendaDestino,
-                    codigoOrigen,
-                    movilOrigen,
-                    empresaTransporte,
-                    conductor,
-                    asunto ?? "",
-                    initialData.tim,
-                    d.olpn ?? "",
-                    d.subdpto ?? "",
-                    d.sku,
-                    d.ean ?? "",
-                    d.descripcion,
-                    d.uMedida ?? "",
-                    d.uEnviadas,
-                    d.uRecibidas,
-                    diferencia,
-                    costo,
-                    montoFaltante,
-                    d.modificadoPor ?? userData?.nombre,
-                    "PENDIENTE",
-                    marca,
-                ]);
-            });
+    //             sheetFaltantes.addRow([
+    //                 fechaEnvioFormatted,
+    //                 fechaRecepcionFormatted,
+    //                 codigoTienda,
+    //                 tiendaDestino,
+    //                 codigoOrigen,
+    //                 movilOrigen,
+    //                 empresaTransporte,
+    //                 conductor,
+    //                 asunto ?? "",
+    //                 initialData.tim,
+    //                 d.olpn ?? "",
+    //                 d.subdpto ?? "",
+    //                 d.sku,
+    //                 d.ean ?? "",
+    //                 d.descripcion,
+    //                 d.uMedida ?? "",
+    //                 d.uEnviadas,
+    //                 d.uRecibidas,
+    //                 diferencia,
+    //                 costo,
+    //                 montoFaltante,
+    //                 d.modificadoPor ?? userData?.nombre,
+    //                 "PENDIENTE",
+    //                 marca,
+    //             ]);
+    //         });
 
-            /* =============== HOJA SOBRANTES =============== */
-            const sheetSobrantes = workbook.addWorksheet("Sobrantes");
+    //         /* =============== HOJA SOBRANTES =============== */
+    //         const sheetSobrantes = workbook.addWorksheet("Sobrantes");
 
-            sheetSobrantes.columns = [
-                { header: "FECHA ENVÍO", width: 15 },
-                { header: "FECHA RECEPCIÓN", width: 18 },
-                { header: "TIM", width: 14 },
-                { header: "SKU", width: 16 },
-                { header: "DESCRIPCIÓN", width: 40 },
-                { header: "SUBDPTO", width: 14 },
-                { header: "CAJAS ENVIADAS", width: 16 },
-                { header: "UNIDADES ENVIADAS", width: 18 },
-                { header: "CASEPACK", width: 14 },
-                { header: "CAJAS RECIBIDAS", width: 18 },
-                { header: "UNIDADES RECIBIDAS", width: 20 },
-                { header: "SOBRANTE", width: 14 },
-                { header: "COSTO PROMEDIO", width: 18 },
-                { header: "TOTAL SOBRANTE", width: 18 },
-                { header: "MARCA SENSIBLE", width: 16 },
-            ];
+    //         sheetSobrantes.columns = [
+    //             { header: "FECHA ENVÍO", width: 15 },
+    //             { header: "FECHA RECEPCIÓN", width: 18 },
+    //             { header: "TIM", width: 14 },
+    //             { header: "SKU", width: 16 },
+    //             { header: "DESCRIPCIÓN", width: 40 },
+    //             { header: "SUBDPTO", width: 14 },
+    //             { header: "CAJAS ENVIADAS", width: 16 },
+    //             { header: "UNIDADES ENVIADAS", width: 18 },
+    //             { header: "CASEPACK", width: 14 },
+    //             { header: "CAJAS RECIBIDAS", width: 18 },
+    //             { header: "UNIDADES RECIBIDAS", width: 20 },
+    //             { header: "SOBRANTE", width: 14 },
+    //             { header: "COSTO PROMEDIO", width: 18 },
+    //             { header: "TOTAL SOBRANTE", width: 18 },
+    //             { header: "MARCA SENSIBLE", width: 16 },
+    //         ];
 
-            sobrantes.forEach(d => {
-                const sobrante = d.uRecibidas - d.uEnviadas;
-                const costo = d.costoPromedio ?? 0;
+    //         sobrantes.forEach(d => {
+    //             const sobrante = d.uRecibidas - d.uEnviadas;
+    //             const costo = d.costoPromedio ?? 0;
 
-                let marca = "-";
-                if (d.marcaSensible) marca = "C";
-                else if (d.isContable) marca = "T";
+    //             let marca = "-";
+    //             if (d.marcaSensible) marca = "C";
+    //             else if (d.isContable) marca = "T";
 
-                sheetSobrantes.addRow([
-                    fechaEnvioFormatted,
-                    fechaRecepcionFormatted,
-                    initialData.tim,
-                    d.sku,
-                    d.descripcion,
-                    d.subdpto,
-                    d.casePack ? d.uEnviadas / d.casePack : 0,
-                    d.uEnviadas,
-                    d.casePack ?? 0,
-                    d.casePack ? d.uRecibidas / d.casePack : 0,
-                    d.uRecibidas,
-                    sobrante,
-                    costo,
-                    sobrante * costo,
-                    marca,
-                ]);
-            });
+    //             sheetSobrantes.addRow([
+    //                 fechaEnvioFormatted,
+    //                 fechaRecepcionFormatted,
+    //                 initialData.tim,
+    //                 d.sku,
+    //                 d.descripcion,
+    //                 d.subdpto,
+    //                 d.casePack ? d.uEnviadas / d.casePack : 0,
+    //                 d.uEnviadas,
+    //                 d.casePack ?? 0,
+    //                 d.casePack ? d.uRecibidas / d.casePack : 0,
+    //                 d.uRecibidas,
+    //                 sobrante,
+    //                 costo,
+    //                 sobrante * costo,
+    //                 marca,
+    //             ]);
+    //         });
 
-            /* =============== DESCARGA =============== */
-            const buffer = await workbook.xlsx.writeBuffer();
+    //         /* =============== DESCARGA =============== */
+    //         const buffer = await workbook.xlsx.writeBuffer();
 
-            saveAs(
-                new Blob([buffer], {
-                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                }),
-                `BITACORA_TIM_${initialData?.tim}.xlsx`
-            );
+    //         saveAs(
+    //             new Blob([buffer], {
+    //                 type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    //             }),
+    //             `BITACORA_TIM_${initialData?.tim}.xlsx`
+    //         );
 
-            notifications.show({
-                title: "Éxito",
-                message: "Excel exportado correctamente",
-                color: "green",
-            });
+    //         notifications.show({
+    //             title: "Éxito",
+    //             message: "Excel exportado correctamente",
+    //             color: "green",
+    //         });
 
-        } catch (error) {
-            console.error("Error al exportar:", error);
-            notifications.show({
-                title: "Error",
-                message: "No se pudo exportar el Excel",
-                color: "red",
-            });
-        } finally {
-            hide();
-        }
-    };
+    //     } catch (error) {
+    //         console.error("Error al exportar:", error);
+    //         notifications.show({
+    //             title: "Error",
+    //             message: "No se pudo exportar el Excel",
+    //             color: "red",
+    //         });
+    //     } finally {
+    //         hide();
+    //     }
+    // };
 
     /* ===================== EXPORTAR WORD ===================== */
     const exportarWordMotivoT = async () => {
@@ -804,19 +857,19 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                                 </ActionIcon>
                             </Tooltip>
                         )} */}
-                       
-                            <Tooltip label={initialData?.motivo == "T" ?"Exportar Excel Bitacora": "Exportar Excel Donación"}>
-                                <ActionIcon
-                                    variant="filled"
-                                    color="teal"
-                                    size="lg"
-                                    onClick={() => { initialData?.motivo == "T" ? setModalOpen(true) : exportarExcel() }}
-                                    style={{ height: 40 }}
-                                >
-                                    <IconFileSpreadsheet size={20} />
-                                </ActionIcon>
-                            </Tooltip>
-                
+
+                        <Tooltip label={initialData?.motivo == "T" ? "Exportar Excel Bitacora" : "Exportar Excel Donación"}>
+                            <ActionIcon
+                                variant="filled"
+                                color="teal"
+                                size="lg"
+                                onClick={() => { initialData?.motivo == "T" ? setModalOpen(true) : exportarExcel() }}
+                                style={{ height: 40 }}
+                            >
+                                <IconFileSpreadsheet size={20} />
+                            </ActionIcon>
+                        </Tooltip>
+
                         {initialData?.motivo === "D" && (
                             <Tooltip label="Exportar Word">
                                 <ActionIcon
@@ -867,7 +920,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                         </Text>
                     ) : (
                         <ResponsiveDataTable
-                            columns={columns}
+                            columns={initialData?.motivo == "NSG" ? columnsNSG : columns}
                             rows={rowsFiltrados}
                             manualMode={false}
                             totalRows={rowsFiltrados.length}
@@ -927,7 +980,7 @@ const DetallesModal: React.FC<DetallesModalProps> = ({
                                 }
 
                                 setModalOpen(false);
-                                exportarExcelTIM();
+                                exportarExcel();
                                 limpiarModalExportacion();
                             }}
                         >

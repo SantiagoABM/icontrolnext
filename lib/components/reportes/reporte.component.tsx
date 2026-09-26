@@ -84,7 +84,7 @@ export default function ReporteComponent() {
     const columns: Column<Reporte>[] = [
         {
             field: "tim",
-            headerName: "Tim",
+            headerName: "# Reporte",
             sortable: true,
             renderCell: (value, row) => (
                 <ButtonActionTableComponent

@@ -41,6 +41,10 @@ const Motivos = [
     {
         value: "T",
         label: "Reporte Tim",
+    },
+    {
+        value: "NSG",
+        label: "Reporte NSG",
     }
 ];
 export default function ReporteFilters({

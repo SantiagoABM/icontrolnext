@@ -15,7 +15,7 @@ import {
 } from "@mantine/core";
 import { IconDownload, IconDeviceMobile, IconNotes } from "@tabler/icons-react";
 
-const APK_PATH = "/apk/IControl_2_4_0.apk";
+const APK_PATH = "/apk/IControl_2_6_0.apk";
 
 export default function ApkDownloadCard() {
 
@@ -66,12 +66,12 @@ export default function ApkDownloadCard() {
           <Accordion variant="separated" w="100%">
             <Accordion.Item value="release-notes">
               <Accordion.Control icon={<IconNotes size={18} color="green" />}>
-                <Text size="sm" fw={500}>Notas de versión (2.4.0+3)</Text>
+                <Text size="sm" fw={500}>Notas de versión (2.6.0+1)</Text>
               </Accordion.Control>
               <Accordion.Panel>
                 <List size="sm" spacing="xs">
-                  <List.Item>Se agregó un selector de obserbación al agregar un nuevo producto para donación.</List.Item>
-                  <List.Item>Nuevo módulo inventario pgc versión Beta(Por testear).</List.Item>
+                  <List.Item>Nuevos módulos NSG</List.Item>
+                  <List.Item>Actualización de vista de login y arreglo de crasheos</List.Item>
                 </List>
               </Accordion.Panel>
             </Accordion.Item>
